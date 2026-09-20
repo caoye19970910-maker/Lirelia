@@ -90,13 +90,6 @@ private fun ReaderSuccess(
     onLocatorChange: (Locator) -> Unit,
     onMenuVisibilityChange: (Boolean) -> Unit
 ) {
-    // Lirelia clean baseline keeps the reader fully local.
-    // AI actions remain in the upstream source tree for later redesign,
-    // but they are not initialized or exposed at runtime.
-    val airaUiState = remember { com.yugentech.quill.reader.viewmodel.quick.QuickUiState() }
-    val isPro = false
-    val isReady = false
-
     val screenState = rememberReaderScreenState(
         publication = state.publication,
         allPositions = state.allPositions,
@@ -134,10 +127,9 @@ private fun ReaderSuccess(
     LaunchedEffect(
         screenState.isMenuVisible,
         screenState.isBrightnessInteracting,
-        screenState.isScrubbing,
-        screenState.showAiraPeek
+        screenState.isScrubbing
     ) {
-        if (screenState.isMenuVisible && !screenState.isBrightnessInteracting && !screenState.isScrubbing && !screenState.showAiraPeek) {
+        if (screenState.isMenuVisible && !screenState.isBrightnessInteracting && !screenState.isScrubbing) {
             delay(4000L)
             screenState.isMenuVisible = false
         }
@@ -251,12 +243,8 @@ private fun ReaderSuccess(
 
         ReaderMenuOverlay(
             modifier = Modifier.zIndex(1f),
-            isPro = isPro,
-            isVisible = screenState.isMenuVisible || screenState.showAiraPeek,
-            showBottomControls = !screenState.showAiraPeek,
-            showAiraPeek = screenState.showAiraPeek,
+            isVisible = screenState.isMenuVisible,
             readerOverlayState = screenState.overlayState,
-            airaUiState = airaUiState,
             currentSound = viewModel.activeSound.collectAsState().value,
             lastSelectedSound = preferences.lastSelectedSound,
             onAction = { action ->
@@ -287,12 +275,6 @@ private fun ReaderSuccess(
                     is ReaderAction.OnBrightnessInteraction -> screenState.isBrightnessInteracting =
                         action.isInteracting
 
-                    is ReaderAction.OnAskAiraClick -> Unit
-                    is ReaderAction.OnAiraDismiss -> screenState.dismissAira()
-                    is ReaderAction.OnAiraSend -> Unit
-                    is ReaderAction.OnQuickAction -> Unit
-                    is ReaderAction.OnStopGeneration -> Unit
-                    is ReaderAction.OnClearSelection -> screenState.selectedText = null
                     is ReaderAction.OnSoundQuickToggle -> {
                         viewModel.quickToggleSound()
                     }
