@@ -7,14 +7,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,26 +21,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.yugentech.quill.reader.viewmodel.quick.QuickUiState
 import com.yugentech.quill.reader.sound.model.BackgroundSound
-import com.yugentech.quill.reader.ui.components.aira.AiraPeekBar
 import com.yugentech.quill.reader.ui.components.overlay.components.bottomBar.ReaderBottomControls
-import com.yugentech.quill.reader.ui.components.overlay.components.bottomBar.components.button.AskAiraButton
 import com.yugentech.quill.reader.ui.components.overlay.components.bottomBar.components.button.SoundToggleButton
 import com.yugentech.quill.reader.ui.components.overlay.components.topBar.ReaderTopBar
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Minimal local reader chrome for Lirelia.
+ *
+ * The upstream AI peek bar and subscription-aware controls are deliberately
+ * absent. This keeps the reader overlay independent from accounts and AI.
+ */
 @Composable
 fun ReaderMenuOverlay(
     modifier: Modifier = Modifier,
     isVisible: Boolean,
-    isPro: Boolean,
-    showBottomControls: Boolean = true,
-    showAiraPeek: Boolean = false,
     readerOverlayState: ReaderOverlayState,
-    airaUiState: QuickUiState = QuickUiState(),
     currentSound: BackgroundSound = BackgroundSound.NONE,
     lastSelectedSound: BackgroundSound = BackgroundSound.RAIN,
     onAction: (ReaderAction) -> Unit
@@ -52,7 +47,8 @@ fun ReaderMenuOverlay(
     val isDragging by interactionSource.collectIsDraggedAsState()
 
     LaunchedEffect(isDragging) {
-        if (isDragging) onAction(ReaderAction.OnScrubStart) else onAction(ReaderAction.OnScrubEnd)
+        if (isDragging) onAction(ReaderAction.OnScrubStart)
+        else onAction(ReaderAction.OnScrubEnd)
     }
 
     LaunchedEffect(readerOverlayState.progress) {
@@ -60,34 +56,20 @@ fun ReaderMenuOverlay(
     }
 
     val currentPage = remember(sliderPosition, readerOverlayState.totalPages) {
-        ((sliderPosition * (readerOverlayState.totalPages - 1)).roundToInt()).coerceIn(
-            0,
-            readerOverlayState.totalPages - 1
-        ) + 1
+        val pageCount = readerOverlayState.totalPages.coerceAtLeast(1)
+        ((sliderPosition * (pageCount - 1)).roundToInt())
+            .coerceIn(0, pageCount - 1) + 1
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.align(Alignment.TopCenter)) {
-            ReaderTopBar(
-                isVisible = isVisible && !showAiraPeek,
-                bookTitle = readerOverlayState.bookTitle,
-                onBackClick = { onAction(ReaderAction.OnBackClick) },
-                onTocClick = { onAction(ReaderAction.OnTocClick) },
-                onSoundClick = { onAction(ReaderAction.OnSoundClick) },
-                onSettingsClick = { onAction(ReaderAction.OnSettingsClick) }
-            )
-        }
-
-        AiraPeekBar(
-            isVisible = showAiraPeek,
-            selectedText = readerOverlayState.selectedText,
-            currentChapterIndex = readerOverlayState.currentChapterIndex,
-            airaUiState = airaUiState,
-            onQuickAction = { onAction(ReaderAction.OnQuickAction(it)) },
-            onSendMessage = { onAction(ReaderAction.OnAiraSend(it)) },
-            onDismiss = { onAction(ReaderAction.OnAiraDismiss) },
-            onStop = { onAction(ReaderAction.OnStopGeneration) },
-            onClearSelection = { onAction(ReaderAction.OnClearSelection) }
+        ReaderTopBar(
+            isVisible = isVisible,
+            bookTitle = readerOverlayState.bookTitle,
+            onBackClick = { onAction(ReaderAction.OnBackClick) },
+            onTocClick = { onAction(ReaderAction.OnTocClick) },
+            onSoundClick = { onAction(ReaderAction.OnSoundClick) },
+            onSettingsClick = { onAction(ReaderAction.OnSettingsClick) },
+            modifier = Modifier.align(Alignment.TopCenter)
         )
 
         Column(
@@ -97,7 +79,7 @@ fun ReaderMenuOverlay(
             horizontalAlignment = Alignment.End
         ) {
             AnimatedVisibility(
-                visible = isVisible && showBottomControls && airaUiState.isReady,
+                visible = isVisible,
                 enter = slideInVertically(
                     initialOffsetY = { it },
                     animationSpec = tween(300, easing = FastOutSlowInEasing)
@@ -107,21 +89,15 @@ fun ReaderMenuOverlay(
                     animationSpec = tween(250, easing = FastOutSlowInEasing)
                 ) + fadeOut()
             ) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    SoundToggleButton(
-                        currentSound = currentSound,
-                        lastSelectedSound = lastSelectedSound,
-                        onClick = { onAction(ReaderAction.OnSoundQuickToggle) }
-                    )
-                    AskAiraButton(onClick = { onAction(ReaderAction.OnAskAiraClick) })
-                }
+                SoundToggleButton(
+                    currentSound = currentSound,
+                    lastSelectedSound = lastSelectedSound,
+                    onClick = { onAction(ReaderAction.OnSoundQuickToggle) }
+                )
             }
 
             ReaderBottomControls(
-                isVisible = isVisible && showBottomControls,
+                isVisible = isVisible,
                 readerOverlayState = readerOverlayState,
                 sliderPosition = sliderPosition,
                 interactionSource = interactionSource,
