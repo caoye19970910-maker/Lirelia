@@ -67,60 +67,59 @@ android {
         buildConfig = true
     }
 
-    // Keep upstream feature code in git history, but compile only Lirelia's
-    // local-first reading surface while the new app is being established.
-    sourceSets {
-        getByName("main").java {
-            exclude("com/yugentech/quill/auth/**")
-            exclude("com/yugentech/quill/billing/**")
-            exclude("com/yugentech/quill/bookDetails/**")
-            exclude("com/yugentech/quill/cloud/**")
-            exclude("com/yugentech/quill/insghts/**")
-            exclude("com/yugentech/quill/notification/**")
-            exclude("com/yugentech/quill/quota/**")
-            exclude("com/yugentech/quill/sources/discover/**")
-            exclude("com/yugentech/quill/sources/gutenberg/**")
-            exclude("com/yugentech/quill/sources/standard/**")
-            exclude("com/yugentech/quill/storage/**")
-            exclude("com/yugentech/quill/user/**")
 
-            exclude("com/yugentech/quill/di/modules/access/**")
-            exclude("com/yugentech/quill/di/modules/notification/**")
-            exclude("com/yugentech/quill/di/modules/books/IndexingModule.kt")
-            exclude("com/yugentech/quill/di/modules/books/StorageModule.kt")
-            exclude("com/yugentech/quill/di/modules/config/SettingsModule.kt")
-            exclude("com/yugentech/quill/di/modules/core/CloudModule.kt")
-            exclude("com/yugentech/quill/di/modules/core/FirebaseModule.kt")
-            exclude("com/yugentech/quill/di/modules/core/NetworkModule.kt")
-            exclude("com/yugentech/quill/di/modules/core/WorkerModule.kt")
-            exclude("com/yugentech/quill/di/modules/shared/AiraModule.kt")
-            exclude("com/yugentech/quill/di/modules/shared/BookDetailsModule.kt")
+}
 
-            exclude("com/yugentech/quill/navigation/navgraph/AboutGraph.kt")
-            exclude("com/yugentech/quill/navigation/navgraph/AccountGraph.kt")
-            exclude("com/yugentech/quill/navigation/navgraph/AuthGraph.kt")
-            exclude("com/yugentech/quill/navigation/navgraph/BookFeatureGraph.kt")
-            exclude("com/yugentech/quill/navigation/navgraph/SettingsGraph.kt")
-            exclude("com/yugentech/quill/navigation/navgraph/SourceGraph.kt")
-            exclude("com/yugentech/quill/navigation/screen/BottomBarScreen.kt")
 
-            exclude("com/yugentech/quill/ui/about/**")
-            exclude("com/yugentech/quill/ui/access/**")
-            exclude("com/yugentech/quill/ui/config/**")
-            exclude("com/yugentech/quill/ui/info/**")
-            exclude("com/yugentech/quill/ui/shared/**")
-            exclude("com/yugentech/quill/ui/sources/**")
-            exclude("com/yugentech/quill/ui/tabs/discoverScreen/**")
-            exclude("com/yugentech/quill/ui/tabs/moreScreen/**")
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    exclude("**/auth/**")
+    exclude("**/billing/**")
+    exclude("**/bookDetails/**")
+    exclude("**/cloud/**")
+    exclude("**/insghts/**")
+    exclude("**/notification/**")
+    exclude("**/quota/**")
+    exclude("**/sources/discover/**")
+    exclude("**/sources/gutenberg/**")
+    exclude("**/sources/standard/**")
+    exclude("**/storage/**")
+    exclude("**/user/**")
 
-            exclude("com/yugentech/quill/ui/main/components/LogoutConfirmationDialog.kt")
-            exclude("com/yugentech/quill/ui/main/components/SectionHeader.kt")
-            exclude("com/yugentech/quill/ui/main/components/ToastMessage.kt")
-            exclude("com/yugentech/quill/ui/main/components/TopBar.kt")
-            exclude("com/yugentech/quill/util/ErrorUtils.kt")
-            exclude("com/yugentech/quill/utils/ReleaseTree.kt")
-        }
-    }
+    exclude("**/di/modules/access/**")
+    exclude("**/di/modules/notification/**")
+    exclude("**/di/modules/books/IndexingModule.kt")
+    exclude("**/di/modules/books/StorageModule.kt")
+    exclude("**/di/modules/config/SettingsModule.kt")
+    exclude("**/di/modules/core/CloudModule.kt")
+    exclude("**/di/modules/core/FirebaseModule.kt")
+    exclude("**/di/modules/core/NetworkModule.kt")
+    exclude("**/di/modules/core/WorkerModule.kt")
+    exclude("**/di/modules/shared/AiraModule.kt")
+    exclude("**/di/modules/shared/BookDetailsModule.kt")
+
+    exclude("**/navigation/navgraph/AboutGraph.kt")
+    exclude("**/navigation/navgraph/AccountGraph.kt")
+    exclude("**/navigation/navgraph/AuthGraph.kt")
+    exclude("**/navigation/navgraph/BookFeatureGraph.kt")
+    exclude("**/navigation/navgraph/SettingsGraph.kt")
+    exclude("**/navigation/navgraph/SourceGraph.kt")
+    exclude("**/navigation/screen/BottomBarScreen.kt")
+
+    exclude("**/ui/about/**")
+    exclude("**/ui/access/**")
+    exclude("**/ui/config/**")
+    exclude("**/ui/info/**")
+    exclude("**/ui/shared/**")
+    exclude("**/ui/sources/**")
+    exclude("**/ui/tabs/discoverScreen/**")
+    exclude("**/ui/tabs/moreScreen/**")
+
+    exclude("**/ui/main/components/LogoutConfirmationDialog.kt")
+    exclude("**/ui/main/components/SectionHeader.kt")
+    exclude("**/ui/main/components/ToastMessage.kt")
+    exclude("**/ui/main/components/TopBar.kt")
+    exclude("**/util/ErrorUtils.kt")
+    exclude("**/utils/ReleaseTree.kt")
 }
 
 configurations.all {
