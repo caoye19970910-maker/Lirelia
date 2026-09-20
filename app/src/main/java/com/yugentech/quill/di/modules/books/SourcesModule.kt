@@ -1,73 +1,19 @@
 package com.yugentech.quill.di.modules.books
 
-import com.yugentech.quill.sources.discover.viewmodel.DiscoverViewModel
-import com.yugentech.quill.sources.gutenberg.repository.GutenbergRepository
-import com.yugentech.quill.sources.gutenberg.repository.GutenbergRepositoryImpl
-import com.yugentech.quill.sources.gutenberg.service.GutenbergApiService
-import com.yugentech.quill.sources.gutenberg.viewmodel.GutenbergViewModel
-import com.yugentech.quill.sources.standard.repository.StandardRepository
-import com.yugentech.quill.sources.standard.repository.StandardRepositoryImpl
-import com.yugentech.quill.sources.standard.service.StandardApiService
-import com.yugentech.quill.sources.standard.viewmodel.StandardViewModel
 import com.yugentech.quill.ui.tabs.sourcesScreen.viewmodel.SourcesViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
+/**
+ * Lirelia local-only import module.
+ *
+ * Remote OPDS/Gutenberg sources remain in the upstream history for reference,
+ * but they are deliberately not wired into the clean runtime.
+ */
 val sourcesModule = module {
-
-    // Kept compiled for now so upstream code remains easy to compare,
-    // but the clean Lirelia navigation does not expose remote catalogs.
-    single {
-        StandardApiService(
-            httpClient = get()
-        )
-    }
-
-    single<StandardRepository> {
-        StandardRepositoryImpl(
-            standardApi = get(),
-            catalogDao = get(),
-            categoryCacheDao = get()
-        )
-    }
-
-    viewModel {
-        StandardViewModel(
-            standardRepository = get(),
-            bookDetailsRepository = get()
-        )
-    }
-
-    single {
-        GutenbergApiService(
-            httpClient = get()
-        )
-    }
-
-    single<GutenbergRepository> {
-        GutenbergRepositoryImpl(
-            apiService = get(),
-            catalogDao = get()
-        )
-    }
-
-    viewModel {
-        GutenbergViewModel(
-            gutenbergRepository = get(),
-            bookDetailsRepository = get()
-        )
-    }
-
     viewModel {
         SourcesViewModel(
             bookDao = get()
-        )
-    }
-
-    viewModel {
-        DiscoverViewModel(
-            standardRepository = get(),
-            gutenbergRepository = get()
         )
     }
 }
