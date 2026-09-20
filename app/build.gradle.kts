@@ -8,8 +8,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.services)
-    id("com.google.firebase.crashlytics")
     id("com.google.devtools.ksp")
     kotlin("plugin.serialization")
 }
@@ -44,10 +42,6 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-
-            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-                mappingFileUploadEnabled = true
-            }
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
