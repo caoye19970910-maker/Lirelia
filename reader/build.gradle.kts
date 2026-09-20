@@ -51,7 +51,6 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
-    implementation(project(":aira"))
     implementation(project(":theme"))
     implementation(project(":database"))
 
@@ -59,7 +58,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.common)
-    implementation(libs.firebase.functions.ktx)
     implementation(libs.readium.shared)
     implementation(libs.readium.streamer)
     implementation(libs.readium.navigator)
