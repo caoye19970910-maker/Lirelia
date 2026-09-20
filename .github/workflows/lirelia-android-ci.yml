@@ -13,6 +13,7 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      SDKMANAGER: /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
 
     steps:
       - name: Checkout
@@ -26,10 +27,10 @@ jobs:
           cache: gradle
 
       - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses >/dev/null || true
+        run: yes | "$SDKMANAGER" --licenses >/dev/null || true
 
       - name: Install Android platform
-        run: sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+        run: "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;37.0.0"
 
       - name: Grant Gradle permission
         run: chmod +x gradlew
