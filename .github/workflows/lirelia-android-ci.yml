@@ -27,10 +27,12 @@ jobs:
           cache: gradle
 
       - name: Accept Android SDK licenses
-        run: yes | "$SDKMANAGER" --licenses >/dev/null || true
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
 
       - name: Install Android platform
-        run: "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+        run: |
+          "$SDKMANAGER" "platform-tools" "platforms;android-37" "build-tools;37.0.0"
 
       - name: Grant Gradle permission
         run: chmod +x gradlew
