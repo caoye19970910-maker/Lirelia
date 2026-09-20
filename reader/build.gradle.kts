@@ -48,7 +48,6 @@ dependencies {
     implementation(project(":aira"))
     implementation(project(":theme"))
     implementation(project(":database"))
-    implementation(project(":domain"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.datastore.preferences)
