@@ -120,8 +120,8 @@ private fun ReaderSuccess(
 
     var highlightToDelete by remember { mutableStateOf<Decoration?>(null) }
 
-    LaunchedEffect(screenState.isMenuVisible, screenState.showAiraPeek) {
-        onMenuVisibilityChange(screenState.isMenuVisible || screenState.showAiraPeek)
+    LaunchedEffect(screenState.isMenuVisible) {
+        onMenuVisibilityChange(screenState.isMenuVisible)
     }
 
     LaunchedEffect(
