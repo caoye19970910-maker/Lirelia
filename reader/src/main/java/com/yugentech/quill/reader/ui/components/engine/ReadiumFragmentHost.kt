@@ -30,6 +30,7 @@ fun ReadiumFragmentHost(
     onSelectionStarted: () -> Unit = {},
     onSelectionEnded: () -> Unit = {},
     onSelectionChanged: (text: String) -> Unit = {},
+    onWordTapped: (word: String) -> Unit = {},
     onClearSelection: (() -> Unit) -> Unit = { it() },
     onNavigatorReady: (EpubNavigatorFragment) -> Unit
 ) {
@@ -39,6 +40,7 @@ fun ReadiumFragmentHost(
     val currentOnSelectionStarted by rememberUpdatedState(onSelectionStarted)
     val currentOnSelectionEnded by rememberUpdatedState(onSelectionEnded)
     val currentOnSelectionChanged by rememberUpdatedState(onSelectionChanged)
+    val currentOnWordTapped by rememberUpdatedState(onWordTapped)
     val currentOnClearSelection by rememberUpdatedState(onClearSelection)
 
     androidx.compose.runtime.key(fragmentTag) {
@@ -50,6 +52,7 @@ fun ReadiumFragmentHost(
                     clipToPadding = false
                     fitsSystemWindows = false
                     this.onSelectionChanged = currentOnSelectionChanged
+                    this.onWordTapped = currentOnWordTapped
 
                     ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ ->
                         WindowInsetsCompat.CONSUMED
@@ -80,6 +83,7 @@ fun ReadiumFragmentHost(
                 view.onSelectionStarted = currentOnSelectionStarted
                 view.onSelectionEnded = currentOnSelectionEnded
                 view.onSelectionChanged = currentOnSelectionChanged
+                view.onWordTapped = currentOnWordTapped
                 currentOnClearSelection { view.finishActionMode() }
             }
         )
