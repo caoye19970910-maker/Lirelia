@@ -1,8 +1,8 @@
 package com.yugentech.quill.ui.main.components
 
 import androidx.compose.animation.graphics.res.animatedVectorResource
-import androidx.compose.animation.graphics.res.rememberAnimatedVectorPainter
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
+import androidx.compose.animation.graphics.vector.rememberAnimatedVectorPainter
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -24,9 +24,7 @@ fun BottomBar(
                 icon = {
                     val resId = when (tab) {
                         QuillTab.Library -> R.drawable.anim_library_enter
-                        QuillTab.Discover -> R.drawable.avd_explore_enter
                         QuillTab.Sources -> R.drawable.avd_feed_enter
-                        QuillTab.Settings -> R.drawable.anim_more_enter
                     }
                     AnimatedNavIcon(
                         selected = isSelected,
