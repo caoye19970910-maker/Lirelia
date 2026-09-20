@@ -12,7 +12,7 @@ plugins {
 android {
     namespace = "com.yugentech.quill.aira"
     compileSdk {
-        version = release(37)
+        version = release(36)
     }
 
     defaultConfig {
