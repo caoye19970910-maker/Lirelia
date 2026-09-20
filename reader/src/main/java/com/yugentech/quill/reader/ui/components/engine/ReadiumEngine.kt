@@ -105,6 +105,7 @@ fun ReadiumEngine(
     var isClearingSelection by remember { mutableStateOf(false) }
     var clearNativeSelectionRequest by remember { mutableStateOf<(() -> Unit)?>(null) }
     var toolbarY by remember { mutableStateOf(0.dp) }
+    var lastWordTapAt by remember { mutableStateOf(0L) }
 
     val screenHeightDp = LocalConfiguration.current.screenHeightDp.toFloat()
     val scope = rememberCoroutineScope()
@@ -214,14 +215,25 @@ fun ReadiumEngine(
                     lastBridgeText = text
                 }
             },
+            onWordTapped = { word ->
+                if (word.isNotBlank()) {
+                    lastWordTapAt = System.currentTimeMillis()
+                    haptic.performTickHaptic()
+                    onDictionaryLookup(word)
+                }
+            },
             onClearSelection = { request ->
                 clearNativeSelectionRequest = request
             },
             onTap = {
-                if (selectionInfo != null) {
-                    scope.launch { clearSelection() }
-                } else {
-                    onTap()
+                scope.launch {
+                    // Give the WebView word-tap bridge a brief chance to report a word.
+                    // If it does, suppress the normal chrome toggle for that same tap.
+                    delay(120)
+                    val wasWordTap = System.currentTimeMillis() - lastWordTapAt < 300
+                    if (!wasWordTap) {
+                        if (selectionInfo != null) clearSelection() else onTap()
+                    }
                 }
             },
             onNavigatorReady = { nav ->
@@ -478,6 +490,95 @@ fun ReadiumEngine(
             }
         }
 
+        suspend fun injectWordTapHandler() {
+            val js = """
+                (function() {
+                    if (window.__lireliaWordTapInstalled) return;
+                    window.__lireliaWordTapInstalled = true;
+
+                    function isWordChar(ch) {
+                        return /[A-Za-zÀ-ÖØ-öø-ÿŒœÆæÇç'’-]/.test(ch);
+                    }
+
+                    function resolveTextPoint(x, y) {
+                        var node = null;
+                        var offset = 0;
+
+                        if (document.caretRangeFromPoint) {
+                            var range = document.caretRangeFromPoint(x, y);
+                            if (range) {
+                                node = range.startContainer;
+                                offset = range.startOffset;
+                            }
+                        } else if (document.caretPositionFromPoint) {
+                            var pos = document.caretPositionFromPoint(x, y);
+                            if (pos) {
+                                node = pos.offsetNode;
+                                offset = pos.offset;
+                            }
+                        }
+
+                        if (!node) return null;
+
+                        if (node.nodeType !== 3) {
+                            var candidate = node.childNodes && node.childNodes[offset];
+                            if (!candidate || candidate.nodeType !== 3) return null;
+                            node = candidate;
+                            offset = 0;
+                        }
+
+                        var text = node.nodeValue || '';
+                        if (!text) return null;
+
+                        if (offset >= text.length) offset = text.length - 1;
+                        if (offset < 0) return null;
+
+                        if (!isWordChar(text.charAt(offset)) &&
+                            offset > 0 &&
+                            isWordChar(text.charAt(offset - 1))) {
+                            offset -= 1;
+                        }
+
+                        if (!isWordChar(text.charAt(offset))) return null;
+
+                        var start = offset;
+                        var end = offset + 1;
+                        while (start > 0 && isWordChar(text.charAt(start - 1))) start--;
+                        while (end < text.length && isWordChar(text.charAt(end))) end++;
+
+                        var word = text.slice(start, end)
+                            .replace(/^['’-]+|['’-]+$/g, '');
+
+                        return word || null;
+                    }
+
+                    document.addEventListener('click', function(event) {
+                        var target = event.target;
+                        if (target && target.closest &&
+                            target.closest('a,button,input,textarea,select,option')) {
+                            return;
+                        }
+
+                        var selection = window.getSelection();
+                        if (selection && !selection.isCollapsed &&
+                            selection.toString().trim()) {
+                            return;
+                        }
+
+                        var word = resolveTextPoint(event.clientX, event.clientY);
+                        if (word && window.quillSelection &&
+                            window.quillSelection.onWordTap) {
+                            window.quillSelection.onWordTap(word);
+                        }
+                    }, true);
+                })();
+            """.trimIndent()
+
+            try {
+                nav.evaluateJavascript(js)
+            } catch (_: Exception) {}
+        }
+
         suspend fun injectSelectionHandler() {
             val js = """
                 (function() {
@@ -623,11 +724,13 @@ fun ReadiumEngine(
         }
 
         injectSelectionStyles()
+        injectWordTapHandler()
         injectSelectionHandler()
 
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             nav.currentLocator.collectLatest { locator ->
                 injectSelectionStyles()
+                injectWordTapHandler()
                 injectSelectionHandler()
                 onLocatorChange(locator)
             }
