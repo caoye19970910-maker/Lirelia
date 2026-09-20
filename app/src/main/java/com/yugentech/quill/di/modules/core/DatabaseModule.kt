@@ -7,6 +7,12 @@ import com.yugentech.quill.database.database.MIGRATION_2_3
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
+/**
+ * Database bindings required by Lirelia's first stable reading loop only.
+ *
+ * The schema is left intact for safe upstream comparison and migration, while
+ * unused cloud/AI DAOs are no longer exposed through the runtime container.
+ */
 val databaseModule = module {
 
     single {
@@ -20,47 +26,9 @@ val databaseModule = module {
             .build()
     }
 
-    single {
-        get<AppDatabase>().airaMessageDao()
-    }
-
-    single {
-        get<AppDatabase>().bookDao()
-    }
-
-    single {
-        get<AppDatabase>().categoryDao()
-    }
-
-    single {
-        get<AppDatabase>().catalogDao()
-    }
-
-    single {
-        get<AppDatabase>().bookChunkDao()
-    }
-
-    single {
-        get<AppDatabase>().categoryCacheDao()
-    }
-
-    single {
-        get<AppDatabase>().userDao()
-    }
-
-    single {
-        get<AppDatabase>().readingSessionDao()
-    }
-
-    single {
-        get<AppDatabase>().quotaDao()
-    }
-
-    single {
-        get<AppDatabase>().bookIndexingStateDao()
-    }
-
-    single {
-        get<AppDatabase>().highlightDao()
-    }
+    single { get<AppDatabase>().bookDao() }
+    single { get<AppDatabase>().categoryDao() }
+    single { get<AppDatabase>().readingSessionDao() }
+    single { get<AppDatabase>().bookIndexingStateDao() }
+    single { get<AppDatabase>().highlightDao() }
 }
