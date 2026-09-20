@@ -62,15 +62,16 @@ fun ReaderMenuOverlay(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        ReaderTopBar(
-            isVisible = isVisible,
-            bookTitle = readerOverlayState.bookTitle,
-            onBackClick = { onAction(ReaderAction.OnBackClick) },
-            onTocClick = { onAction(ReaderAction.OnTocClick) },
-            onSoundClick = { onAction(ReaderAction.OnSoundClick) },
-            onSettingsClick = { onAction(ReaderAction.OnSettingsClick) },
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+        Box(modifier = Modifier.align(Alignment.TopCenter)) {
+            ReaderTopBar(
+                isVisible = isVisible,
+                bookTitle = readerOverlayState.bookTitle,
+                onBackClick = { onAction(ReaderAction.OnBackClick) },
+                onTocClick = { onAction(ReaderAction.OnTocClick) },
+                onSoundClick = { onAction(ReaderAction.OnSoundClick) },
+                onSettingsClick = { onAction(ReaderAction.OnSettingsClick) }
+            )
+        }
 
         Column(
             modifier = Modifier
