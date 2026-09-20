@@ -13,10 +13,18 @@ import org.readium.r2.shared.ExperimentalReadiumApi
 import org.readium.r2.shared.publication.Locator
 import org.readium.r2.shared.publication.Publication
 
-class SelectionBridge(private val onSelectionChanged: (String) -> Unit) {
+class SelectionBridge(
+    private val onSelectionChanged: (String) -> Unit,
+    private val onWordTapped: (String) -> Unit
+) {
     @android.webkit.JavascriptInterface
     fun onTextChange(text: String) {
         onSelectionChanged(text)
+    }
+
+    @android.webkit.JavascriptInterface
+    fun onWordTap(word: String) {
+        onWordTapped(word)
     }
 }
 
@@ -67,7 +75,12 @@ fun buildNavigatorConfig(wrapperView: ReadiumWrapperView) = EpubNavigatorFragmen
     servedAssets = servedAssets + "font/.*"
     shouldApplyInsetsPadding = false
     registerFonts(this)
-    registerJavascriptInterface("quillSelection") { SelectionBridge { wrapperView.onSelectionChanged(it) } }
+    registerJavascriptInterface("quillSelection") {
+        SelectionBridge(
+            onSelectionChanged = { wrapperView.onSelectionChanged(it) },
+            onWordTapped = { wrapperView.onWordTapped(it) }
+        )
+    }
 }
 
 @OptIn(ExperimentalReadiumApi::class)
