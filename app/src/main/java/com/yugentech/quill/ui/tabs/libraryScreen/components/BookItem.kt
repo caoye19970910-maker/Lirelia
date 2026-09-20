@@ -1,6 +1,10 @@
 package com.yugentech.quill.ui.tabs.libraryScreen.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,8 +37,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,9 +50,33 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import com.yugentech.quill.database.model.DownloadStatus
 import com.yugentech.quill.database.view.LibraryBookView
-import com.yugentech.quill.ui.tabs.discoverScreen.components.shimmerEffect
 import com.yugentech.theme.service.HapticService
 import org.koin.compose.koinInject
+
+private fun Modifier.libraryShimmerEffect(): Modifier = composed {
+    val transition = rememberInfiniteTransition(label = "library_shimmer")
+    val translate by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1800f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1100, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "library_shimmer_translate"
+    )
+    val colors = listOf(
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f)
+    )
+    background(
+        Brush.linearGradient(
+            colors = colors,
+            start = Offset(translate - 450f, translate - 450f),
+            end = Offset(translate, translate)
+        )
+    )
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -90,7 +121,7 @@ fun BookItem(
                     modifier = Modifier
                         .fillMaxSize()
                         .alpha(shimmerAlpha)
-                        .shimmerEffect()
+                        .libraryShimmerEffect()
                 )
 
                 // Image fades in
