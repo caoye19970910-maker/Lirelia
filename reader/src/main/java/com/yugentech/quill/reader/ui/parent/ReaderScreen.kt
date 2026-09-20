@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,9 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.yugentech.quill.reader.dictionary.repository.LocalFrenchDictionary
+import com.yugentech.quill.reader.dictionary.service.FrenchTtsController
+import com.yugentech.quill.reader.dictionary.ui.DictionarySheet
 import com.yugentech.quill.reader.ui.components.highlightSheet.HighlightSheet
 import com.yugentech.quill.reader.settings.model.ReaderSettings
 import com.yugentech.quill.reader.ui.components.engine.ReaderDefaults
@@ -96,6 +101,13 @@ private fun ReaderSuccess(
         totalPages = state.totalPages,
         initialLocator = state.initialLocator
     )
+
+    val context = LocalContext.current
+    val ttsController = remember(context) { FrenchTtsController(context) }
+    DisposableEffect(ttsController) {
+        onDispose { ttsController.shutdown() }
+    }
+    var dictionaryQuery by remember { mutableStateOf<String?>(null) }
 
     val dbHighlights by viewModel.highlights.collectAsState()
 
@@ -210,11 +222,12 @@ private fun ReaderSuccess(
                 allPositions = state.allPositions,
                 preferences = preferences.epub.copy(scroll = engineScrollMode),
                 commands = viewModel.commands,
-                isPro = false,
-                isAiraReady = false,
                 decorations = activeDecorations,
                 onTap = { screenState.toggleMenu() },
-                onAskAira = {},
+                onDictionaryLookup = { text ->
+                    dictionaryQuery = text
+                    screenState.isMenuVisible = false
+                },
                 onSelectionAction = { locator ->
                     pendingHighlightLocator = locator
                 },
@@ -292,6 +305,15 @@ private fun ReaderSuccess(
                     .zIndex(2f)
             )
         }
+    }
+
+    dictionaryQuery?.let { query ->
+        DictionarySheet(
+            query = query,
+            entry = LocalFrenchDictionary.lookup(query),
+            onDismiss = { dictionaryQuery = null },
+            onSpeak = { ttsController.speak(it) }
+        )
     }
 
     if (pendingHighlightLocator != null) {
