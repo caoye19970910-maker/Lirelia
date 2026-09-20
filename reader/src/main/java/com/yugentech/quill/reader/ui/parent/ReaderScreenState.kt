@@ -69,23 +69,7 @@ class ReaderScreenState(
         )
 
     fun toggleMenu() {
-        if (showAiraPeek) {
-            showAiraPeek = false
-            selectedText = null
-        } else {
-            isMenuVisible = !isMenuVisible
-        }
-    }
-
-    fun showAira(text: String?) {
-        selectedText = text
-        showAiraPeek = true
-        isMenuVisible = false 
-    }
-
-    fun dismissAira() {
-        showAiraPeek = false
-        selectedText = null
+        isMenuVisible = !isMenuVisible
     }
 
     fun handleLocatorChange(newLocator: Locator) {
