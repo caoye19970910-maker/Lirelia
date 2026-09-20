@@ -1,7 +1,6 @@
 package com.yugentech.quill.di
 
 import android.app.Application
-import androidx.work.Configuration
 import com.yugentech.quill.BuildConfig
 import com.yugentech.quill.di.modules.books.booksModule
 import com.yugentech.quill.di.modules.books.sourcesModule
@@ -12,19 +11,18 @@ import com.yugentech.quill.di.modules.core.databaseModule
 import com.yugentech.quill.di.modules.shared.readerModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
-import org.koin.androidx.workmanager.factory.KoinWorkerFactory
-import org.koin.androidx.workmanager.koin.workManagerFactory
 import org.koin.core.context.startKoin
 import timber.log.Timber
 
 /**
  * Lirelia's local-first application container.
  *
- * The original Quill project wires Firebase, account, billing, cloud sync,
- * Gutenberg and Aira at startup. Lirelia deliberately starts only the
- * modules required for local EPUB import, library storage and reading.
+ * Startup intentionally contains only the modules needed for local EPUB
+ * import, library storage, appearance and reading. Cloud sync, accounts,
+ * billing, remote catalogs, AI indexing and background workers are not part
+ * of the clean baseline runtime.
  */
-class QuillApp : Application(), Configuration.Provider {
+class QuillApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
@@ -36,7 +34,6 @@ class QuillApp : Application(), Configuration.Provider {
         startKoin {
             androidLogger()
             androidContext(this@QuillApp)
-            workManagerFactory()
 
             modules(
                 databaseModule,
@@ -49,9 +46,4 @@ class QuillApp : Application(), Configuration.Provider {
             )
         }
     }
-
-    override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setWorkerFactory(KoinWorkerFactory())
-            .build()
 }
