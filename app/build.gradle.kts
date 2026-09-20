@@ -66,6 +66,61 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // Keep upstream feature code in git history, but compile only Lirelia's
+    // local-first reading surface while the new app is being established.
+    sourceSets {
+        getByName("main").java {
+            exclude("com/yugentech/quill/auth/**")
+            exclude("com/yugentech/quill/billing/**")
+            exclude("com/yugentech/quill/bookDetails/**")
+            exclude("com/yugentech/quill/cloud/**")
+            exclude("com/yugentech/quill/insghts/**")
+            exclude("com/yugentech/quill/notification/**")
+            exclude("com/yugentech/quill/quota/**")
+            exclude("com/yugentech/quill/sources/discover/**")
+            exclude("com/yugentech/quill/sources/gutenberg/**")
+            exclude("com/yugentech/quill/sources/standard/**")
+            exclude("com/yugentech/quill/storage/**")
+            exclude("com/yugentech/quill/user/**")
+
+            exclude("com/yugentech/quill/di/modules/access/**")
+            exclude("com/yugentech/quill/di/modules/notification/**")
+            exclude("com/yugentech/quill/di/modules/books/IndexingModule.kt")
+            exclude("com/yugentech/quill/di/modules/books/StorageModule.kt")
+            exclude("com/yugentech/quill/di/modules/config/SettingsModule.kt")
+            exclude("com/yugentech/quill/di/modules/core/CloudModule.kt")
+            exclude("com/yugentech/quill/di/modules/core/FirebaseModule.kt")
+            exclude("com/yugentech/quill/di/modules/core/NetworkModule.kt")
+            exclude("com/yugentech/quill/di/modules/core/WorkerModule.kt")
+            exclude("com/yugentech/quill/di/modules/shared/AiraModule.kt")
+            exclude("com/yugentech/quill/di/modules/shared/BookDetailsModule.kt")
+
+            exclude("com/yugentech/quill/navigation/navgraph/AboutGraph.kt")
+            exclude("com/yugentech/quill/navigation/navgraph/AccountGraph.kt")
+            exclude("com/yugentech/quill/navigation/navgraph/AuthGraph.kt")
+            exclude("com/yugentech/quill/navigation/navgraph/BookFeatureGraph.kt")
+            exclude("com/yugentech/quill/navigation/navgraph/SettingsGraph.kt")
+            exclude("com/yugentech/quill/navigation/navgraph/SourceGraph.kt")
+            exclude("com/yugentech/quill/navigation/screen/BottomBarScreen.kt")
+
+            exclude("com/yugentech/quill/ui/about/**")
+            exclude("com/yugentech/quill/ui/access/**")
+            exclude("com/yugentech/quill/ui/config/**")
+            exclude("com/yugentech/quill/ui/info/**")
+            exclude("com/yugentech/quill/ui/shared/**")
+            exclude("com/yugentech/quill/ui/sources/**")
+            exclude("com/yugentech/quill/ui/tabs/discoverScreen/**")
+            exclude("com/yugentech/quill/ui/tabs/moreScreen/**")
+
+            exclude("com/yugentech/quill/ui/main/components/LogoutConfirmationDialog.kt")
+            exclude("com/yugentech/quill/ui/main/components/SectionHeader.kt")
+            exclude("com/yugentech/quill/ui/main/components/ToastMessage.kt")
+            exclude("com/yugentech/quill/ui/main/components/TopBar.kt")
+            exclude("com/yugentech/quill/util/ErrorUtils.kt")
+            exclude("com/yugentech/quill/utils/ReleaseTree.kt")
+        }
+    }
 }
 
 configurations.all {
@@ -77,27 +132,16 @@ configurations.all {
 
 dependencies {
     implementation(project(":database"))
-    implementation(project(":aira"))
     implementation(project(":theme"))
     implementation(project(":reader"))
-    implementation(project(":domain"))
 
-    implementation(libs.firebase.functions.ktx)
     implementation(libs.androidx.graphics.shapes)
-    implementation(libs.androidx.lifecycle.process)
-    implementation(libs.billing.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.material3)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.readium.shared)
     implementation(libs.readium.streamer)
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.client.logging)
-    implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.ktor.client.okhttp)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -116,13 +160,6 @@ dependencies {
     implementation(libs.androidx.compose.material3.window.size.class1)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.accompanist.navigation.animation)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
-    implementation(libs.firebase.database.ktx)
-    implementation(libs.firebase.crashlytics)
-    implementation(libs.firebase.analytics)
-    implementation(libs.play.services.auth)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.animation)
@@ -130,8 +167,6 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.datastore.core)
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.koin.androidx.workmanager)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
