@@ -1,8 +1,6 @@
 @file:Suppress("DEPRECATION")
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.io.FileInputStream
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -10,12 +8,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
     kotlin("plugin.serialization")
-}
-
-val localProperties = Properties()
-val localPropertiesFile: File = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 android {
@@ -31,11 +23,6 @@ android {
         versionName = "3.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val webClientId = localProperties.getProperty("WEB_CLIENT_ID") ?: ""
-        buildConfigField("String", "WEB_CLIENT_ID", "\"$webClientId\"")
-
-        val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY") ?: ""
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildTypes {
