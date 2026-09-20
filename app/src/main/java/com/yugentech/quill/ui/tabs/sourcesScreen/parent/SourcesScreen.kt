@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
@@ -38,61 +36,36 @@ import com.yugentech.quill.ui.tabs.sourcesScreen.components.LargeCatalogCard
 import com.yugentech.quill.ui.tabs.sourcesScreen.result.ImportResult
 import com.yugentech.quill.ui.tabs.sourcesScreen.viewmodel.SourcesViewModel
 
+/**
+ * The clean Lirelia baseline intentionally exposes one source only:
+ * EPUB files already on the device. Remote catalogs can be reconsidered
+ * later without coupling the core reading path to networking or accounts.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SourcesScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
-    onSourceClick: (BookSource) -> Unit,
+    onSourceClick: (BookSource) -> Unit = {},
     onLocalFilesClick: () -> Unit,
     viewModel: SourcesViewModel
 ) {
     val context = LocalContext.current
-
     val isImporting by viewModel.isImporting.collectAsStateWithLifecycle()
     val importResults by viewModel.importResults.collectAsStateWithLifecycle()
-
     var showFilePickerSheet by remember { mutableStateOf(false) }
 
-    val catalogs = listOf(
-        CatalogInfo(
-            source = BookSource.USER_IMPORTED,
-            title = "Import from Device",
-            subtitle = "Supports EPUB files",
-            description = "Import and read your own book collection. Select EPUB files stored anywhere on your device.",
-            icon = Icons.Default.FolderOpen,
-            shape = MaterialShapes.Bun.toShape(),
-            containerColor = { MaterialTheme.colorScheme.tertiaryContainer },
-            contentColor = { MaterialTheme.colorScheme.onTertiaryContainer },
-            buttonContainerColor = { MaterialTheme.colorScheme.tertiary },
-            buttonContentColor = { MaterialTheme.colorScheme.onTertiary },
-            buttonText = if (isImporting) "Importing..." else "Browse Device",
-        ),
-        CatalogInfo(
-            source = BookSource.STANDARD_EBOOKS,
-            title = "Standard Ebooks",
-            subtitle = "High quality public domain",
-            description = "Carefully formatted and typeset public domain ebooks with professional-grade quality and modern design.",
-            icon = Icons.Default.AutoStories,
-            shape = MaterialShapes.SoftBurst.toShape(),
-            containerColor = { MaterialTheme.colorScheme.primaryContainer },
-            contentColor = { MaterialTheme.colorScheme.onPrimaryContainer },
-            buttonContainerColor = { MaterialTheme.colorScheme.primary },
-            buttonContentColor = { MaterialTheme.colorScheme.onPrimary },
-            buttonText = "Browse Catalog",
-        ),
-        CatalogInfo(
-            source = BookSource.GUTENBERG,
-            title = "Project Gutenberg",
-            subtitle = "60,000+ free eBooks",
-            description = "The first and largest single collection of free eBooks. Literature from around the world in multiple languages.",
-            icon = Icons.Default.Public,
-            shape = MaterialShapes.Cookie9Sided.toShape(),
-            containerColor = { MaterialTheme.colorScheme.secondaryContainer },
-            contentColor = { MaterialTheme.colorScheme.onSecondaryContainer },
-            buttonContainerColor = { MaterialTheme.colorScheme.secondary },
-            buttonContentColor = { MaterialTheme.colorScheme.onSecondary },
-            buttonText = "Explore Collection",
-        )
+    val localImport = CatalogInfo(
+        source = BookSource.USER_IMPORTED,
+        title = "Import EPUB",
+        subtitle = "Choose books from this device",
+        description = "Import your own EPUB books. They stay on this device and are available offline.",
+        icon = Icons.Default.FolderOpen,
+        shape = MaterialShapes.Bun.toShape(),
+        containerColor = { MaterialTheme.colorScheme.tertiaryContainer },
+        contentColor = { MaterialTheme.colorScheme.onTertiaryContainer },
+        buttonContainerColor = { MaterialTheme.colorScheme.tertiary },
+        buttonContentColor = { MaterialTheme.colorScheme.onTertiary },
+        buttonText = if (isImporting) "Importing..." else "Choose EPUB",
     )
 
     Scaffold(
@@ -100,7 +73,7 @@ fun SourcesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Sources",
+                        text = "Import",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -126,17 +99,10 @@ fun SourcesScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            catalogs.forEach { catalog ->
-                LargeCatalogCard(
-                    catalog = catalog,
-                    onClick = {
-                        when (catalog.source) {
-                            BookSource.USER_IMPORTED -> showFilePickerSheet = true
-                            else -> onSourceClick(catalog.source)
-                        }
-                    },
-                )
-            }
+            LargeCatalogCard(
+                catalog = localImport,
+                onClick = { showFilePickerSheet = true }
+            )
         }
 
         if (showFilePickerSheet) {
@@ -149,13 +115,11 @@ fun SourcesScreen(
             )
         }
 
-        // We check if there are results instead of using a separate boolean flag
         if (importResults.isNotEmpty()) {
             ImportStatusSheet(
                 results = importResults,
                 onDismiss = {
                     val hasSuccess = importResults.any { it is ImportResult.Success }
-                    // Clear the state in ViewModel to remove the sheet
                     viewModel.clearResults()
                     if (hasSuccess) {
                         onLocalFilesClick()
