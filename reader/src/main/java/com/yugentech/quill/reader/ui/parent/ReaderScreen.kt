@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.yugentech.quill.reader.ui.components.highlightSheet.HighlightSheet
-import com.yugentech.quill.reader.viewmodel.quick.QuickViewModel
 import com.yugentech.quill.reader.settings.model.ReaderSettings
 import com.yugentech.quill.reader.ui.components.engine.ReaderDefaults
 import com.yugentech.quill.reader.ui.components.engine.ReadiumEngine
@@ -41,7 +40,6 @@ import com.yugentech.quill.reader.viewmodel.reader.ReaderUiState
 import com.yugentech.quill.reader.viewmodel.reader.ReaderViewModel
 import kotlinx.coroutines.delay
 import org.json.JSONObject
-import org.koin.androidx.compose.koinViewModel
 import org.readium.r2.navigator.Decoration
 import org.readium.r2.navigator.epub.EpubPreferences
 import org.readium.r2.shared.ExperimentalReadiumApi
@@ -92,10 +90,12 @@ private fun ReaderSuccess(
     onLocatorChange: (Locator) -> Unit,
     onMenuVisibilityChange: (Boolean) -> Unit
 ) {
-    val quickViewModel: QuickViewModel = koinViewModel()
-    val airaUiState by quickViewModel.uiState.collectAsState()
-    val isPro = airaUiState.isPro
-    val isReady = airaUiState.isReady
+    // Lirelia clean baseline keeps the reader fully local.
+    // AI actions remain in the upstream source tree for later redesign,
+    // but they are not initialized or exposed at runtime.
+    val airaUiState = remember { com.yugentech.quill.reader.viewmodel.quick.QuickUiState() }
+    val isPro = false
+    val isReady = false
 
     val screenState = rememberReaderScreenState(
         publication = state.publication,
@@ -126,10 +126,6 @@ private fun ReaderSuccess(
     val sheetState = rememberModalBottomSheetState()
 
     var highlightToDelete by remember { mutableStateOf<Decoration?>(null) }
-
-    LaunchedEffect(state.bookId) {
-        quickViewModel.observeIndexingStatus(state.bookId)
-    }
 
     LaunchedEffect(screenState.isMenuVisible, screenState.showAiraPeek) {
         onMenuVisibilityChange(screenState.isMenuVisible || screenState.showAiraPeek)
@@ -226,10 +222,7 @@ private fun ReaderSuccess(
                 isAiraReady = isReady,
                 decorations = activeDecorations,
                 onTap = { screenState.toggleMenu() },
-                onAskAira = { text ->
-                    screenState.showAira(text)
-                    quickViewModel.clearResponse()
-                },
+                onAskAira = {},
                 onSelectionAction = { locator ->
                     pendingHighlightLocator = locator
                 },
@@ -294,19 +287,11 @@ private fun ReaderSuccess(
                     is ReaderAction.OnBrightnessInteraction -> screenState.isBrightnessInteracting =
                         action.isInteracting
 
-                    is ReaderAction.OnAskAiraClick -> screenState.showAira(null)
-                    is ReaderAction.OnAiraDismiss -> {
-                        screenState.dismissAira()
-                        quickViewModel.clearResponse()
-                    }
-
-                    is ReaderAction.OnAiraSend -> quickViewModel.ask(state.bookId, action.question)
-                    is ReaderAction.OnQuickAction -> quickViewModel.handleQuickPrompt(
-                        state.bookId,
-                        action.prompt
-                    )
-
-                    is ReaderAction.OnStopGeneration -> quickViewModel.stopGeneration()
+                    is ReaderAction.OnAskAiraClick -> Unit
+                    is ReaderAction.OnAiraDismiss -> screenState.dismissAira()
+                    is ReaderAction.OnAiraSend -> Unit
+                    is ReaderAction.OnQuickAction -> Unit
+                    is ReaderAction.OnStopGeneration -> Unit
                     is ReaderAction.OnClearSelection -> screenState.selectedText = null
                     is ReaderAction.OnSoundQuickToggle -> {
                         viewModel.quickToggleSound()
