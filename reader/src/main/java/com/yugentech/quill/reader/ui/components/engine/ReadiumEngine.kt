@@ -66,18 +66,16 @@ fun ReadiumEngine(
     modifier: Modifier = Modifier,
     publication: Publication,
     bookId: String,
-    isPro: Boolean = false,
     initialLocation: Locator?,
     targetJumpHref: String?,
     targetSeekProgress: Double?,
     targetLocator: Locator? = null,
     allPositions: List<Locator>,
     preferences: EpubPreferences,
-    isAiraReady: Boolean = false,
     decorations: List<Decoration> = emptyList(),
     commands: Flow<ReaderCommand>? = null,
     onTap: () -> Unit,
-    onAskAira: (String) -> Unit = {},
+    onDictionaryLookup: (String) -> Unit = {},
     onSelectionAction: (Locator) -> Unit = {},
     onDecorationTapped: (Decoration) -> Unit = {},
     onJumpComplete: () -> Unit,
@@ -203,16 +201,6 @@ fun ReadiumEngine(
             fragmentTag = fragmentTag,
             initialLocation = initialLocation,
             preferences = preferences,
-            isPro = isPro,
-            isAiraReady = isAiraReady,
-            onAskAira = { text ->
-                onAskAira(text)
-                scope.launch { clearSelection() }
-            },
-            onHighlightRequest = { locator ->
-                onSelectionAction(locator)
-                scope.launch { clearSelection() }
-            },
             onSelectionStarted = {
                 // Haptics removed to avoid double-triggering with onSelectionChanged
             },
@@ -273,15 +261,14 @@ fun ReadiumEngine(
             exitSelection?.let { sel ->
                 SelectionToolbar(
                     selectionInfo = sel,
-                    isAiraReady = isAiraReady,
                     hazeState = hazeState,
                     readerBgIsLight = readerBgIsLight,
-                    onHighlight = {
-                        sel.locator?.let { onSelectionAction(it) }
+                    onDictionary = { text ->
+                        onDictionaryLookup(text)
                         scope.launch { clearSelection() }
                     },
-                    onAskAira = { text ->
-                        onAskAira(text)
+                    onHighlight = {
+                        sel.locator?.let { onSelectionAction(it) }
                         scope.launch { clearSelection() }
                     },
                     onCopy = { text ->
