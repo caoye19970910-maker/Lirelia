@@ -23,7 +23,6 @@ class ReaderScreenState(
     var showTocSheet by mutableStateOf(false)
     var showSoundSheet by mutableStateOf(false)
     var isBrightnessInteracting by mutableStateOf(false)
-    var showAiraPeek by mutableStateOf(false)
     var selectedText by mutableStateOf<String?>(null)
     var targetJumpHref by mutableStateOf<String?>(null)
     var pendingSeekProgress by mutableStateOf<Double?>(null)
