@@ -15,6 +15,8 @@ import org.koin.dsl.module
 
 val sourcesModule = module {
 
+    // Kept compiled for now so upstream code remains easy to compare,
+    // but the clean Lirelia navigation does not expose remote catalogs.
     single {
         StandardApiService(
             httpClient = get()
@@ -58,8 +60,7 @@ val sourcesModule = module {
 
     viewModel {
         SourcesViewModel(
-            bookDao = get(),
-            billingRepository = get()
+            bookDao = get()
         )
     }
 
