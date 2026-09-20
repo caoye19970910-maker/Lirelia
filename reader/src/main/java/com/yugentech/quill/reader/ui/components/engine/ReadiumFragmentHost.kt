@@ -27,28 +27,19 @@ fun ReadiumFragmentHost(
     initialLocation: Locator?,
     preferences: EpubPreferences,
     onTap: () -> Unit,
-    isPro: Boolean = false,
-    isAiraReady: Boolean = false,
-    onAskAira: (selectedText: String) -> Unit = {},
-    onHighlightRequest: (Locator) -> Unit = {},
     onSelectionStarted: () -> Unit = {},
     onSelectionEnded: () -> Unit = {},
     onSelectionChanged: (text: String) -> Unit = {},
     onClearSelection: (() -> Unit) -> Unit = { it() },
     onNavigatorReady: (EpubNavigatorFragment) -> Unit
 ) {
-
     val context = LocalContext.current
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnNavigatorReady by rememberUpdatedState(onNavigatorReady)
-    val currentOnAskAira by rememberUpdatedState(onAskAira)
-    val currentOnHighlightRequest by rememberUpdatedState(onHighlightRequest)
     val currentOnSelectionStarted by rememberUpdatedState(onSelectionStarted)
     val currentOnSelectionEnded by rememberUpdatedState(onSelectionEnded)
     val currentOnSelectionChanged by rememberUpdatedState(onSelectionChanged)
     val currentOnClearSelection by rememberUpdatedState(onClearSelection)
-    val currentIsPro by rememberUpdatedState(isPro)
-    val currentIsAiraReady by rememberUpdatedState(isAiraReady)
 
     androidx.compose.runtime.key(fragmentTag) {
         AndroidView(
@@ -58,11 +49,11 @@ fun ReadiumFragmentHost(
                     container.id = View.generateViewId()
                     clipToPadding = false
                     fitsSystemWindows = false
-                    this.isPro = currentIsPro
-                    this.isAiraReady = currentIsAiraReady
                     this.onSelectionChanged = currentOnSelectionChanged
 
-                    ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ -> WindowInsetsCompat.CONSUMED }
+                    ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ ->
+                        WindowInsetsCompat.CONSUMED
+                    }
 
                     addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                         override fun onViewAttachedToWindow(v: View) {
@@ -86,10 +77,6 @@ fun ReadiumFragmentHost(
                 }
             },
             update = { view ->
-                view.isPro = currentIsPro
-                view.isAiraReady = currentIsAiraReady
-                view.onAskAira = currentOnAskAira
-                view.onHighlightRequest = currentOnHighlightRequest
                 view.onSelectionStarted = currentOnSelectionStarted
                 view.onSelectionEnded = currentOnSelectionEnded
                 view.onSelectionChanged = currentOnSelectionChanged
