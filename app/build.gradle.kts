@@ -15,12 +15,12 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.yugentech.quill"
+        applicationId = "com.caoye.lirelia"
         minSdk = 26
         targetSdk = 36
 
-        versionCode = 11
-        versionName = "3.2.0"
+        versionCode = 1
+        versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     }
