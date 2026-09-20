@@ -24,7 +24,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Quill"
+rootProject.name = "Lirelia"
 include(":app")
 include(":reader")
 include(":theme")
