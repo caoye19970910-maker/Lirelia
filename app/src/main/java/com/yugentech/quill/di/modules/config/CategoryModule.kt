@@ -10,8 +10,7 @@ val categoryModule = module {
 
     single<CategoryRepository> {
         CategoryRepositoryImpl(
-            categoryDao = get(),
-            cloudSyncRepository = get()
+            categoryDao = get()
         )
     }
 
