@@ -2,13 +2,17 @@ package com.yugentech.quill.category.repository
 
 import com.yugentech.quill.database.dao.CategoryDao
 import com.yugentech.quill.database.entity.CategoryEntity
-import com.yugentech.quill.cloud.repository.CloudSyncRepository
 import com.yugentech.theme.tokens.AppConstants.SHELF
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Local-only category storage for Lirelia.
+ *
+ * Cloud synchronization from the original Quill project is intentionally
+ * removed from the clean baseline. Categories are persisted with Room.
+ */
 class CategoryRepositoryImpl(
-    private val categoryDao: CategoryDao,
-    private val cloudSyncRepository: CloudSyncRepository
+    private val categoryDao: CategoryDao
 ) : CategoryRepository {
 
     override fun getAllCategories(): Flow<List<CategoryEntity>> =
@@ -31,30 +35,25 @@ class CategoryRepositoryImpl(
     }
 
     override suspend fun insertCategory(name: String) {
-        val entity = CategoryEntity(
-            name = name,
-            sortOrder = categoryDao.getCategoryCount(),
-            isSystem = false,
-            isSynced = false
+        categoryDao.insertCategory(
+            CategoryEntity(
+                name = name,
+                sortOrder = categoryDao.getCategoryCount(),
+                isSystem = false,
+                isSynced = true
+            )
         )
-        categoryDao.insertCategory(entity)
-        cloudSyncRepository.scheduleBackgroundSync()
     }
 
     override suspend fun updateCategory(category: CategoryEntity) {
-        categoryDao.updateCategory(category.copy(isSynced = false))
-        cloudSyncRepository.scheduleBackgroundSync()
+        categoryDao.updateCategory(category.copy(isSynced = true))
     }
 
     override suspend fun updateCategories(categories: List<CategoryEntity>) {
-        val unsyncedList = categories.map { it.copy(isSynced = false) }
-        categoryDao.updateCategories(unsyncedList)
-        cloudSyncRepository.scheduleBackgroundSync()
+        categoryDao.updateCategories(categories.map { it.copy(isSynced = true) })
     }
-
 
     override suspend fun deleteCategory(category: CategoryEntity) {
         categoryDao.deleteCategory(category.name)
-        cloudSyncRepository.deleteCategoryFromCloud(category.id.toString())
     }
 }
