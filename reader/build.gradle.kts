@@ -44,6 +44,12 @@ android {
     }
 }
 
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    exclude("**/reader/ui/components/aira/**")
+    exclude("**/reader/viewmodel/quick/**")
+}
+
 dependencies {
     implementation(project(":aira"))
     implementation(project(":theme"))
