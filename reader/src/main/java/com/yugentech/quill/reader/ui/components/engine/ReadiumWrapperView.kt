@@ -17,6 +17,7 @@ class ReadiumWrapperView @JvmOverloads constructor(
     var onSelectionStarted: () -> Unit = {}
     var onSelectionEnded: () -> Unit = {}
     var onSelectionChanged: (text: String) -> Unit = {}
+    var onWordTapped: (word: String) -> Unit = {}
 
     private var activeActionMode: ActionMode? = null
     val container = FragmentContainerView(context).also { addView(it) }
