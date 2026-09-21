@@ -57,7 +57,7 @@ jobs:
       - name: Run French lemmatizer tests
         working-directory: readest-upstream
         shell: pwsh
-        run: pnpm --filter @readest/readest-app test -- src/__tests__/services/dictionaries/lemmatize/french.test.ts
+        run: pnpm --filter @readest/readest-app test -- --run src/__tests__/services/dictionaries/lemmatize/french.test.ts
 
       - name: Create local build env
         shell: pwsh
