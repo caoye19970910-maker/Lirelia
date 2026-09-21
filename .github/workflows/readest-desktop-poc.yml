@@ -1,0 +1,89 @@
+name: Readest French Desktop PoC
+
+on:
+  push:
+    branches:
+      - desktop-readest-poc
+    paths:
+      - ".github/workflows/readest-desktop-poc.yml"
+      - "experiments/readest-fr/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Lirelia PoC branch
+        uses: actions/checkout@v4
+
+      - name: Clone Readest 0.12.8
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch v0.12.8 --recurse-submodules https://github.com/readest/readest.git readest-upstream
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.1
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Readest dependencies
+        working-directory: readest-upstream
+        shell: pwsh
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Readest vendor assets
+        working-directory: readest-upstream
+        shell: pwsh
+        run: pnpm --filter @readest/readest-app setup-vendors
+
+      - name: Apply French lookup patch
+        shell: pwsh
+        run: ./experiments/readest-fr/patch-readest.ps1
+
+      - name: Run French lemmatizer tests
+        working-directory: readest-upstream
+        shell: pwsh
+        run: pnpm --filter @readest/readest-app test -- src/__tests__/services/dictionaries/lemmatize/french.test.ts
+
+      - name: Create local build env
+        shell: pwsh
+        run: |
+          "NEXT_PUBLIC_APP_PLATFORM=tauri" | Set-Content readest-upstream/apps/readest-app/.env.local
+          "NEXT_PUBLIC_PORTABLE_APP=true" | Add-Content readest-upstream/apps/readest-app/.env.local
+
+      - name: Build Windows x64 NSIS
+        working-directory: readest-upstream/apps/readest-app
+        shell: pwsh
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+
+      - name: Collect build outputs
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-poc | Out-Null
+          Get-ChildItem -Recurse readest-upstream\target\x86_64-pc-windows-msvc\release -Include readest.exe,*setup.exe,*.exe | ForEach-Object {
+            Copy-Item $_.FullName dist-poc -Force
+          }
+          Get-ChildItem dist-poc
+
+      - name: Upload Windows PoC
+        uses: actions/upload-artifact@v4
+        with:
+          name: readest-french-windows-poc
+          path: dist-poc/*
+          if-no-files-found: error
