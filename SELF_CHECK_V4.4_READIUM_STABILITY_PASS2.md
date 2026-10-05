@@ -1,0 +1,21 @@
+# V4.4 Self-check
+
+- [x] Version bumped to `124 / 4.4-readium-stability-pass2`.
+- [x] Readium word-tap setup separated from progress persistence and installed immediately per resource.
+- [x] Long-press selection release cannot trigger the word-tap translation handler while a DOM selection is active.
+- [x] EPUB word tap restores automatic pronunciation parity with the legacy reader.
+- [x] Scroll-mode page controls fall through to Readium resource navigation at document edges.
+- [x] Legacy Readium migration searches/position generation moved off the UI thread.
+- [x] Annotation DB/decorations/writes moved off the UI thread where applicable.
+- [x] Dictionary/LearningStore lifecycle handles are closed deterministically in MainActivity and ReadiumReaderActivity.
+- [x] Temporary LearningStore created by book deletion is closed.
+- [x] WikDict common startup path avoids synchronous SQLite validation when there is no recovery backup.
+- [x] Full dictionary meaning caps removed in repository merge/full lookup path.
+- [x] Bundled dictionary contains a verified >12-sense entry (`relever`: 17 meanings), so the no-cap change is meaningful.
+- [x] Bundled dictionary `PRAGMA integrity_check = ok`.
+- [x] Bundled counts: 156,365 entries / 28,878 forms / 8,862 phrases.
+- [x] XML resources parse successfully.
+- [x] Gradle wrapper jar is present.
+- [x] No runtime Ollama integration exists; only stale-key cleanup remains.
+- [x] Standalone Kotlin parse-oriented pass found no obvious `expecting` / `unexpected tokens` / unclosed syntax errors in edited core files. Android/Compose symbols cannot resolve without the Android classpath.
+- [ ] Full `:app:assembleDebug`: attempted, but this environment cannot resolve `services.gradle.org`, so Gradle 8.10.2 cannot be downloaded here.

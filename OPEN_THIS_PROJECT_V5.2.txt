@@ -1,0 +1,2 @@
+Open the folder `LireliaMobile_V5.2` in Android Studio.
+Recommended validation: Sync Project with Gradle Files -> Run app -> test Training wrong-list + gender choices -> EPUB Aa typography/line guide -> highlight a repeated French word -> sentence translation.

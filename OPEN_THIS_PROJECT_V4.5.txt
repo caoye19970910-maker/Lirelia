@@ -1,0 +1,11 @@
+Lirelia Mobile V4.5 — Translation Experience
+
+Open THIS folder in Android Studio (the folder that contains settings.gradle.kts).
+Use the existing Pixel 7 API 35 emulator or your Huawei device.
+
+Priority checks:
+1. Tap Maman/père/pris/voyage.
+2. Confirm word meaning appears above a clearly labeled 本句 translation.
+3. Confirm voyage receives a separate word fallback if local dictionaries miss it.
+4. Confirm pronunciation has no normal Google connection toast.
+5. Open 完整词典 and verify all meanings/related/phrases/examples are scrollable.

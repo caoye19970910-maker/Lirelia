@@ -1,0 +1,22 @@
+Lirelia Mobile V4.7 — Dictionary Context Focus
+
+Open THIS folder in Android Studio (the folder containing settings.gradle.kts).
+
+What changed from V4.6:
+1. Exact tapped-word offset is forwarded into Dictionary Engine 2.0 in the TXT/legacy reader.
+2. EPUB taps now send the exact word offset inside the extracted sentence.
+3. Repeated occurrences of the same word no longer default to the first occurrence.
+4. Long EPUB sentences keep a 520-character window around the tapped word.
+5. POS normalization supports English/French plus Chinese/composite labels.
+6. Morphology candidates hydrate from a POS-compatible lexical sense first.
+
+Recommended tests after Run:
+- tâche: “une tâche difficile” vs “je tâche de comprendre”
+- est: “il est content” vs “à l’est”
+- son: “son père” vs “le son”
+- livre: “un livre” vs “il livre le colis”
+- porte: “une porte” vs “il porte un sac”
+- pris / fait / dit
+- Same ambiguous word twice in one sentence.
+
+Do not run AGP Upgrade Assistant before this version is confirmed working.

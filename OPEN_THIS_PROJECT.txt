@@ -1,0 +1,4 @@
+Lirelia Mobile V5.2
+
+Android Studio 请打开当前文件夹：LireliaMobile_V5.2
+本版重点：训练错题 / 阴阳性选择 / 排版范围 / 智能断句 / 深色标注与重复浅标 / Google 整句翻译 / 双线行跟随。

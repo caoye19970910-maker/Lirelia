@@ -1,0 +1,11 @@
+Language Reader Mobile V3.17 — Smart Phrases & Reading Notes
+
+Open this folder in Android Studio.
+
+Quick test checklist:
+1. Tap `tandis` in a sentence containing `tandis qu’il` and confirm `tandis que` appears under automatic phrases with Chinese meaning.
+2. Tap `femme` in `sa femme` and confirm the word card shows `名词 · 阴性`.
+3. Confirm there is only one pronunciation action: `🔊 发音`.
+4. Use a color highlight, then use `⌫ 清除`; underline should remain local-only when chosen.
+5. Tap the reading page to show controls: no book title and no bottom footer should appear.
+6. Open the Notes tab, filter `U下划线`, add/edit a note, then jump back to the source.

@@ -1,0 +1,9 @@
+Lirelia V4.2
+
+Open THIS folder in Android Studio (the folder containing settings.gradle.kts and app/).
+
+Version: 4.2-readium-stable-no-ollama
+Application ID: com.cy.languagereader.mobile
+Gradle wrapper: included
+
+First sync may download Gradle 8.10.2, Android dependencies and Readium 3.1.0.

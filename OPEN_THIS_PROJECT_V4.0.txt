@@ -1,0 +1,9 @@
+在 Android Studio 中打开这个文件所在的整个文件夹（不要只打开 app 文件夹）。
+
+推荐：
+1. Gradle JDK = 17
+2. 第一次 Sync 需要能访问 Google Maven + Maven Central（Readium 依赖会在这里下载）
+3. 运行 app 模块
+4. EPUB 会自动进入新的 Readium 阅读器；PDF/TXT 仍走原来的阅读器
+
+版本：Lirelia Mobile V4.0 — Readium / Translation First
