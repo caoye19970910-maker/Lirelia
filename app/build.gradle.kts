@@ -28,6 +28,15 @@ android {
         compose = true
     }
 
+    // The repository still contains the original Quill sample application's source tree.
+    // Lirelia is the com.cy.languagereader.mobile app; compiling the legacy sample pulls in
+    // Firebase/Koin/Room/etc. dependencies that are not part of this standalone build.
+    sourceSets {
+        getByName("main") {
+            java.exclude("com/yugentech/quill/**")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
