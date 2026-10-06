@@ -33,7 +33,7 @@ android {
     // Firebase/Koin/Room/etc. dependencies that are not part of this standalone build.
     sourceSets {
         getByName("main") {
-            java.exclude("com/yugentech/quill/**")
+            java.setSrcDirs(listOf("src/main/java/com/cy"))
         }
     }
 
