@@ -6996,7 +6996,7 @@ private fun sentenceRange(text: String, offset: Int): IntRange {
 }
 
 private fun extractSentence(text: String, offset: Int): String =
-    FrenchSentenceSegmenter.sentence(text, offset, maxChars = 520)
+    FrenchSentenceSegmenter.sentence(text, offset, maxChars = 1000)
 
 private fun semanticChunks(sentence: String): List<String> {
     val normalized = sentence.trim()
