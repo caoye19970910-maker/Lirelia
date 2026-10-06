@@ -12,8 +12,8 @@ android {
         applicationId = "com.cy.languagereader.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 133
-        versionName = "5.3-smart-sentence-context"
+        versionCode = 134
+        versionName = "5.4-sentence-context-engine"
     }
 
     buildFeatures {
