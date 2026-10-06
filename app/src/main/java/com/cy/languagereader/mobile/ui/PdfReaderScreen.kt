@@ -1413,4 +1413,4 @@ private fun pdfSentenceRange(
 private fun pdfExtractSentence(
     text: String,
     offset: Int,
-): String = FrenchSentenceSegmenter.sentence(text, offset, maxChars = 520)
+): String = FrenchSentenceSegmenter.sentence(text, offset, maxChars = 1000)
