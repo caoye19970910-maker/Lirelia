@@ -18,7 +18,7 @@ object FrenchSentenceSegmenter {
         // original offsets valid while preventing imported/PDF visual wraps from becoming sentences.
         val segmentationText = buildString(text.length) {
             text.forEach { ch ->
-                append(if (ch == '\\n' || ch == '\\r' || ch == '\\t') ' ' else ch)
+                append(if (ch == '\n' || ch == '\r' || ch == '\t') ' ' else ch)
             }
         }
         val iterator = BreakIterator.getSentenceInstance(Locale.FRENCH).apply { setText(segmentationText) }
