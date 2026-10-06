@@ -14,7 +14,14 @@ object FrenchSentenceSegmenter {
     fun range(text: String, rawOffset: Int): IntRange? {
         if (text.isBlank()) return null
         val safe = rawOffset.coerceIn(0, text.lastIndex)
-        val iterator = BreakIterator.getSentenceInstance(Locale.FRENCH).apply { setText(text) }
+        // Replace layout line breaks/tabs with same-length spaces before segmentation. This keeps all
+        // original offsets valid while preventing imported/PDF visual wraps from becoming sentences.
+        val segmentationText = buildString(text.length) {
+            text.forEach { ch ->
+                append(if (ch == '\\n' || ch == '\\r' || ch == '\\t') ' ' else ch)
+            }
+        }
+        val iterator = BreakIterator.getSentenceInstance(Locale.FRENCH).apply { setText(segmentationText) }
 
         var start = iterator.preceding((safe + 1).coerceAtMost(text.length))
         if (start == BreakIterator.DONE) start = 0
@@ -28,13 +35,13 @@ object FrenchSentenceSegmenter {
             if (start <= 0) return@repeat
             val previous = iterator.preceding(start)
             if (previous == BreakIterator.DONE || previous >= start) return@repeat
-            val fragment = text.substring(previous, start).trim()
+            val fragment = segmentationText.substring(previous, start).trim()
             if (isAbbreviationFragment(fragment)) start = previous else return@repeat
         }
 
         // Conversely, if the iterator lands *on* an abbreviation fragment, join the following
         // chunk instead of returning a fake one-word sentence.
-        if (end - start < 14 && isAbbreviationFragment(text.substring(start, end).trim())) {
+        if (end - start < 14 && isAbbreviationFragment(segmentationText.substring(start, end).trim())) {
             val next = iterator.following(end.coerceAtMost(text.length - 1))
             if (next != BreakIterator.DONE) end = next
         }
@@ -45,7 +52,7 @@ object FrenchSentenceSegmenter {
         return start..(end - 1)
     }
 
-    fun sentence(text: String, rawOffset: Int, maxChars: Int = 520): String {
+    fun sentence(text: String, rawOffset: Int, maxChars: Int = 1000): String {
         val range = range(text, rawOffset) ?: return text.trim().replace(Regex("\\s+"), " ").take(maxChars)
         val safe = rawOffset.coerceIn(range.first, range.last)
         val raw = text.substring(range.first, range.last + 1)
