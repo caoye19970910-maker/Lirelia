@@ -2781,10 +2781,11 @@ private val INSTALL_TAP_SCRIPT = """
   }
 
   function sentenceAt(node, localOffset, word) {
-    // V5.4: DOM layout is not sentence structure. Always build one logical chapter-text stream
-    // around the exact tapped text-node offset, collapsing visual/HTML whitespace to ordinary
-    // spaces before sentence segmentation. This prevents line DIVs, hard wraps, and publisher
-    // formatting from becoming fake sentence boundaries.
+    // V5.3.1: sentence boundaries come from punctuation, never from visual whitespace.
+    // EPUBs often contain page/column gaps, hard wraps, spacer nodes or separate layout blocks
+    // inside one grammatical sentence. We therefore rebuild a local logical text stream around
+    // the exact tapped node, normalize ALL layout whitespace, and scan to the nearest real
+    // French sentence punctuation on both sides.
     const parent = node && node.parentElement ? node.parentElement : null;
     const root = document.body || parent;
     if (!root) return { text: word, focus: 0 };
@@ -2797,10 +2798,19 @@ private val INSTALL_TAP_SCRIPT = """
     function shouldSkip(textNode) {
       const el = textNode && textNode.parentElement;
       if (!el) return true;
-      if (!el.closest) return false;
-      if (el.closest('script,style,noscript,svg,math,template,textarea,input,button,select,option,[contenteditable="true"],[hidden],[aria-hidden="true"]')) {
-        return true;
-      }
+      if (el.closest && el.closest(
+        'script,style,noscript,svg,math,template,textarea,input,button,select,option,' +
+        '[contenteditable="true"],[hidden],[aria-hidden="true"]'
+      )) return true;
+
+      // Ignore genuinely hidden duplicated layout text, but do NOT reject off-screen text:
+      // the rest of the same sentence may simply be on the next page/column.
+      try {
+        const style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+        if (style && (style.display === 'none' || style.visibility === 'hidden' || style.contentVisibility === 'hidden')) {
+          return true;
+        }
+      } catch (_) {}
       return false;
     }
 
@@ -2814,10 +2824,43 @@ private val INSTALL_TAP_SCRIPT = """
     }
 
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let targetIndex = -1;
+    let current;
+    while ((current = walker.nextNode())) {
+      if (shouldSkip(current)) continue;
+      const value = current.nodeValue || '';
+      if (!value) continue;
+      if (current === node) targetIndex = nodes.length;
+      nodes.push(current);
+    }
+    if (targetIndex < 0) return { text: word, focus: 0 };
+
+    // Only reconstruct a generous neighborhood around the tap. This avoids unrelated hidden
+    // chapter furniture while still covering very long literary sentences.
+    const SIDE_LIMIT = 7000;
+    let first = targetIndex;
+    let last = targetIndex;
+    let count = 0;
+    while (first > 0 && count < SIDE_LIMIT) {
+      first--;
+      count += (nodes[first].nodeValue || '').length;
+    }
+    count = 0;
+    while (last + 1 < nodes.length && count < SIDE_LIMIT) {
+      last++;
+      count += (nodes[last].nodeValue || '').length;
+    }
+
     let full = '';
     let absolute = -1;
     let previousBlock = null;
-    let current;
+
+    function isLayoutSpace(ch) {
+      return /\s/u.test(ch) ||
+        ch === '\u00a0' || ch === '\u2007' || ch === '\u202f' ||
+        ch === '\u200b' || ch === '\u2060' || ch === '\ufeff';
+    }
 
     function appendNormalized(value, focusOffset) {
       const safeFocus = focusOffset == null
@@ -2829,9 +2872,8 @@ private val INSTALL_TAP_SCRIPT = """
         if (i === value.length) break;
 
         const ch = value.charAt(i);
-        if (/\s/.test(ch)) {
-          // Collapse every visual line break, tab and run of spaces to ONE logical space.
-          // Do not emit leading whitespace at the beginning of the chapter stream.
+        if (ch === '\u00ad') continue; // soft hyphen is layout-only
+        if (isLayoutSpace(ch)) {
           if (full && full.charAt(full.length - 1) !== ' ') full += ' ';
         } else {
           full += ch;
@@ -2839,33 +2881,27 @@ private val INSTALL_TAP_SCRIPT = """
       }
     }
 
-    while ((current = walker.nextNode())) {
-      if (shouldSkip(current)) continue;
-      const value = current.nodeValue || '';
-      if (!value) continue;
+    for (let index = first; index <= last; index++) {
+      const textNode = nodes[index];
+      const value = textNode.nodeValue || '';
+      const owner = blockOwner(textNode);
 
-      const owner = blockOwner(current);
-      // Some EPUBs split one printed sentence into multiple sibling DIV/P blocks without any
-      // whitespace inside their text nodes. Preserve reading order with a soft space, but never
-      // treat the block boundary itself as a sentence boundary.
+      // A block/page/column change is only a soft word separator, never a sentence boundary.
       if (
         full &&
         previousBlock &&
         owner !== previousBlock &&
         full.charAt(full.length - 1) !== ' ' &&
-        !/^\s/.test(value)
+        !/^\s/u.test(value)
       ) {
         full += ' ';
       }
 
-      appendNormalized(value, current === node ? localOffset : null);
+      appendNormalized(value, index === targetIndex ? localOffset : null);
       previousBlock = owner;
     }
 
     if (!full) return { text: word, focus: 0 };
-
-    // Exact DOM-node mapping is the normal path. This fallback is only for malformed/rewritten
-    // DOM nodes; repeated words can otherwise make a global string search ambiguous.
     if (absolute < 0) {
       const lowerFull = full.toLocaleLowerCase('fr');
       const lowerWord = String(word || '').toLocaleLowerCase('fr');
@@ -2874,112 +2910,97 @@ private val INSTALL_TAP_SCRIPT = """
     absolute = Math.max(0, Math.min(absolute, full.length));
 
     const abbreviations = new Set([
-      'm','mme','mmes','mlle','dr','pr','prof','etc','env','av','apr',
-      'janv','févr','avr','juill','sept','oct','nov','déc','n','no'
+      'm','mme','mmes','mlle','mlles','dr','drs','pr','prof','st','ste','etc','env',
+      'av','apr','janv','févr','fevr','avr','juil','juill','sept','oct','nov','déc','dec',
+      'n','no','nos','p','pp','vol','éd','ed','trad'
     ]);
 
-    function isProtectedBoundary(boundary) {
-      // Intl.Segmenter is usually excellent, but WebView/ICU versions can still split after
-      // French abbreviations or initials. Inspect the punctuation immediately before a proposed
-      // boundary and reject it when it is clearly not a sentence stop.
-      let j = Math.min(boundary - 1, full.length - 1);
-      while (j >= 0 && /[\s»”"'’)\]}]/.test(full.charAt(j))) j--;
-      if (j < 0 || full.charAt(j) !== '.') return false;
-
-      const prev = full.charAt(j - 1);
-      const next = full.charAt(j + 1);
-      if (/\d/.test(prev) && /\d/.test(next)) return true;
-
-      let k = j - 1;
+    function previousLetterToken(dotIndex) {
+      let k = dotIndex - 1;
       while (k >= 0 && /[A-Za-zÀ-ÖØ-öø-ÿŒœÆæ]/u.test(full.charAt(k))) k--;
-      const token = full.slice(k + 1, j);
+      return full.slice(k + 1, dotIndex);
+    }
+
+    function nextNonSpace(index) {
+      let j = index;
+      while (j < full.length && isLayoutSpace(full.charAt(j))) j++;
+      return j < full.length ? full.charAt(j) : '';
+    }
+
+    function isProtectedPeriod(i) {
+      if (full.charAt(i) !== '.') return false;
+      const prev = full.charAt(i - 1);
+      const next = full.charAt(i + 1);
+
+      // Decimal numbers and all but the final dot in an ellipsis are not boundaries.
+      if (/\d/.test(prev) && /\d/.test(next)) return true;
+      if (next === '.') return true;
+
+      const token = previousLetterToken(i);
       const lower = token.toLocaleLowerCase('fr');
       if (abbreviations.has(lower)) return true;
       if (token.length === 1 && /[A-ZÀ-ÖØ-Þ]/u.test(token)) return true;
+
+      // Unknown short abbreviation followed by a lower-case continuation, e.g. "p. ex.".
+      const after = nextNonSpace(i + 1);
+      if (token.length > 0 && token.length <= 4 && /[a-zà-öø-ÿœæ]/u.test(after)) return true;
       return false;
     }
 
+    function isSentenceTerminalAt(i) {
+      const ch = full.charAt(i);
+      if (ch === '!' || ch === '?' || ch === '…') return true;
+      if (ch !== '.') return false;
+      return !isProtectedPeriod(i);
+    }
+
+    function skipAfterBoundary(index) {
+      let j = index;
+      // Consume repeated punctuation and closing quotation/bracket marks.
+      while (j < full.length && /[.!?…]/u.test(full.charAt(j))) j++;
+      while (j < full.length && /[»”"'’\)\]\}]/u.test(full.charAt(j))) j++;
+      while (j < full.length && isLayoutSpace(full.charAt(j))) j++;
+      return j;
+    }
+
+    // Do NOT use Intl.Segmenter here: some Android WebView/ICU builds treat layout/paragraph
+    // separators as sentence boundaries. Nearest real punctuation is deterministic and survives
+    // huge visual gaps, hard wraps and separate EPUB layout blocks.
     let start = 0;
+    for (let i = Math.max(0, absolute - 1); i >= 0; i--) {
+      if (isSentenceTerminalAt(i)) {
+        start = skipAfterBoundary(i + 1);
+        break;
+      }
+    }
+
     let end = full.length;
-    let segmented = false;
-
-    try {
-      if (typeof Intl !== 'undefined' && Intl.Segmenter) {
-        const segmenter = new Intl.Segmenter('fr', { granularity: 'sentence' });
-        const parts = [];
-        let hit = -1;
-
-        for (const part of segmenter.segment(full)) {
-          const a = Number(part.index || 0);
-          const b = a + String(part.segment || '').length;
-          parts.push({ start: a, end: b });
-          if (hit < 0 && absolute >= a && (absolute < b || (b === full.length && absolute === b))) {
-            hit = parts.length - 1;
-          }
-        }
-
-        if (hit >= 0) {
-          let left = hit;
-          let right = hit;
-
-          while (left > 0 && isProtectedBoundary(parts[left].start)) left--;
-          while (right + 1 < parts.length && isProtectedBoundary(parts[right].end)) right++;
-
-          start = parts[left].start;
-          end = parts[right].end;
-          segmented = true;
-        }
+    for (let i = Math.max(0, absolute); i < full.length; i++) {
+      if (isSentenceTerminalAt(i)) {
+        end = i + 1;
+        while (end < full.length && /[.!?…]/u.test(full.charAt(end))) end++;
+        while (end < full.length && /[»”"'’\)\]\}]/u.test(full.charAt(end))) end++;
+        break;
       }
-    } catch (_) {}
-
-    if (!segmented) {
-      function isBoundaryAt(i) {
-        const ch = full.charAt(i);
-        if (ch === '!' || ch === '?' || ch === '…') return true;
-        if (ch !== '.') return false;
-        return !isProtectedBoundary(i + 1);
-      }
-
-      start = Math.max(0, Math.min(absolute, full.length));
-      while (start > 0 && !isBoundaryAt(start - 1)) start--;
-
-      end = Math.max(0, Math.min(absolute, full.length));
-      while (end < full.length && !isBoundaryAt(end)) end++;
-      if (end < full.length) end++;
-
-      const closingMarks = '»”"\')]} ';
-      while (end < full.length && closingMarks.includes(full.charAt(end))) end++;
     }
 
     const raw = full.slice(start, end);
     const rawFocus = Math.max(0, absolute - start);
-    const normalizedRaw = raw.replace(/\s+/g, ' ');
-    const normalizedBefore = raw.slice(0, rawFocus).replace(/\s+/g, ' ');
+    const normalizedRaw = raw.replace(/[\s\u00a0\u2007\u202f\u200b\u2060\ufeff]+/gu, ' ');
+    const normalizedBefore = raw
+      .slice(0, rawFocus)
+      .replace(/[\s\u00a0\u2007\u202f\u200b\u2060\ufeff]+/gu, ' ');
     const leading = normalizedRaw.length - normalizedRaw.trimStart().length;
     let sentence = normalizedRaw.trim();
     let focus = Math.max(0, normalizedBefore.length - leading);
     if (!sentence) return { text: word, focus: 0 };
 
-    // A genuine sentence should stay complete. Keep only an emergency ceiling for malformed
-    // EPUB chapters with no usable sentence punctuation at all.
-    const maxSentence = 2000;
+    // Emergency ceiling only for malformed chapters with no punctuation for thousands of chars.
+    const maxSentence = 2400;
     if (sentence.length > maxSentence) {
-      const windowStart = Math.max(0, Math.min(focus - 850, sentence.length - maxSentence));
-      let clipStart = windowStart;
-      let clipEnd = Math.min(sentence.length, windowStart + maxSentence);
-      const boundary = /[.!?…]/;
-
-      for (let i = windowStart; i > Math.max(0, windowStart - 180); i--) {
-        if (boundary.test(sentence.charAt(i))) { clipStart = i + 1; break; }
-      }
-      for (let i = clipEnd; i < Math.min(sentence.length, clipEnd + 180); i++) {
-        if (boundary.test(sentence.charAt(i))) { clipEnd = i + 1; break; }
-      }
-
-      const clippedRaw = sentence.slice(clipStart, clipEnd);
-      const clipLeading = clippedRaw.length - clippedRaw.trimStart().length;
-      sentence = clippedRaw.trim();
-      focus = Math.max(0, focus - clipStart - clipLeading);
+      const windowStart = Math.max(0, Math.min(focus - 1000, sentence.length - maxSentence));
+      sentence = sentence.slice(windowStart, windowStart + maxSentence).trim();
+      focus = Math.max(0, focus - windowStart);
     }
 
     return { text: sentence, focus: Math.min(focus, Math.max(0, sentence.length - 1)) };
