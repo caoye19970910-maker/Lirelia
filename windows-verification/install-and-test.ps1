@@ -2,12 +2,24 @@ param([Parameter(Mandatory=$true)][string]$InstallerDirectory)
 $ErrorActionPreference = 'Stop'
 $installer = Get-ChildItem $InstallerDirectory -Filter '*.exe' -Recurse | Select-Object -First 1
 if (-not $installer) { throw 'The installer artifact contains no EXE.' }
+New-Item verification-results -ItemType Directory -Force | Out-Null
+& "$env:ProgramFiles\\7-Zip\\7z.exe" l $installer.FullName | Out-File verification-results/installer-contents.txt
+Write-Host 'Prepare the Windows runner WebView2 runtime before installation.'
+choco install webview2-runtime --yes --no-progress --limit-output
+if ($LASTEXITCODE -notin @(0,1641,3010)) { throw "WebView2 runtime setup failed: $LASTEXITCODE" }
 $destination = Join-Path $env:RUNNER_TEMP 'LireliaReadestTest'
 $setup = Start-Process $installer.FullName -ArgumentList @('/S', '/CURRENTUSER', "/D=$destination") -Wait -PassThru
 if ($setup.ExitCode -ne 0) { throw "Installer failed: $($setup.ExitCode)" }
 $application = Join-Path $destination 'readest.exe'
 if (-not (Test-Path $application)) {
     Write-Host "Requested install folder: $destination"
+    foreach ($hive in @('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall', 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall')) {
+        Get-ChildItem $hive -ErrorAction SilentlyContinue | Get-ItemProperty |
+            Where-Object { $_.DisplayName -match 'Lirelia|Readest|WebView' } |
+            Select-Object DisplayName,InstallLocation,DisplayVersion | Format-Table -AutoSize
+    }
+    Get-ChildItem "$env:TEMP\\msedge_installer.log","$env:LOCALAPPDATA\\Temp\\msedge_installer.log" -ErrorAction SilentlyContinue |
+        ForEach-Object { Get-Content $_.FullName -Tail 60 }
     if (Test-Path $destination) { Get-ChildItem $destination -Recurse | Select-Object FullName,Length | Format-Table -AutoSize }
     foreach ($base in @("$env:LOCALAPPDATA\\Lirelia Readest", "$env:ProgramFiles\\Lirelia Readest")) {
         if (Test-Path $base) { Get-ChildItem $base -Recurse | Select-Object FullName,Length | Format-Table -AutoSize }
