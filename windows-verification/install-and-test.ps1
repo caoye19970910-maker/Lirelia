@@ -8,8 +8,12 @@ Write-Host 'Prepare the Windows runner WebView2 runtime before installation.'
 choco install webview2-runtime --yes --no-progress --limit-output
 if ($LASTEXITCODE -notin @(0,1641,3010)) { throw "WebView2 runtime setup failed: $LASTEXITCODE" }
 $destination = Join-Path $env:RUNNER_TEMP 'LireliaReadestTest'
-$setup = Start-Process $installer.FullName -ArgumentList @('/S', '/CURRENTUSER', "/D=$destination") -Wait -PassThru
+$setup = Start-Process $installer.FullName -ArgumentList @('/S', '/CURRENTUSER') -Wait -PassThru
 if ($setup.ExitCode -ne 0) { throw "Installer failed: $($setup.ExitCode)" }
+$registered = Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' |
+    Get-ItemProperty | Where-Object { $_.DisplayName -eq 'Lirelia Readest' } | Select-Object -First 1
+if ($registered.InstallLocation) { $destination = $registered.InstallLocation.Trim('"') }
+Write-Host "Registered application location: $destination"
 $application = Join-Path $destination 'readest.exe'
 if (-not (Test-Path $application)) {
     Write-Host "Requested install folder: $destination"
