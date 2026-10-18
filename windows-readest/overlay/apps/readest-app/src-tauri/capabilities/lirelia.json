@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "lirelia-local-core",
+  "description": "Local Lirelia learning sidecar, JSON-lines over stdin/stdout",
+  "windows": ["main", "reader-*"],
+  "platforms": ["windows", "linux", "macOS"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [{ "name": "binaries/lirelia-core", "sidecar": true, "args": [] }]
+    },
+    "shell:allow-stdin-write",
+    "shell:allow-kill"
+  ]
+}

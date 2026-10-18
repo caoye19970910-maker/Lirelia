@@ -1,0 +1,9 @@
+{
+  "productName": "Lirelia Readest",
+  "identifier": "com.lirelia.readest",
+  "bundle": {
+    "externalBin": ["binaries/lirelia-core"],
+    "createUpdaterArtifacts": false
+  },
+  "plugins": { "updater": { "endpoints": [] } }
+}

@@ -1,0 +1,5 @@
+requests>=2.31,<3
+keyring>=25,<27
+gTTS>=2.5,<3
+fsrs>=6.3.2,<7
+pyinstaller>=6,<7

@@ -1,0 +1,65 @@
+name: Lirelia Readest Windows installer
+
+on:
+  push:
+    branches: ['codex/windows-readest']
+    paths: ['windows-readest/**', '.github/workflows/build-readest-windows.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NODE_OPTIONS: --max-old-space-size=4096
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Get Lirelia integration
+        uses: actions/checkout@v4
+        with:
+          path: lirelia
+      - name: Get complete pinned Readest source
+        uses: actions/checkout@v4
+        with:
+          repository: readest/readest
+          ref: 3cc39ad7a558e6612e1a8135058fbd6f3c90b3e3
+          path: readest
+          persist-credentials: false
+      - name: Apply Lirelia integration
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C readest apply --check ../lirelia/windows-readest/upstream.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned Readest source does not match the integration patch.' }
+          git -C readest apply ../lirelia/windows-readest/upstream.patch
+          if ($LASTEXITCODE -ne 0) { throw 'Applying the integration patch failed.' }
+          Get-ChildItem -Force lirelia/windows-readest/overlay | Copy-Item -Destination readest -Recurse -Force
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16
+        with:
+          workspaces: readest -> target
+      - name: Set up pnpm
+        run: npm install -g pnpm@11.25.0
+      - name: Compile and package Windows application
+        shell: pwsh
+        run: ./readest/lirelia/build-windows.ps1 -SeparateTypecheck
+      - name: Upload installable EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lirelia-Readest-Windows-x64-installer
+          path: readest/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 14

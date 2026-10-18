@@ -1,0 +1,12 @@
+{
+  "readest": "3cc39ad7a558e6612e1a8135058fbd6f3c90b3e3",
+  "submodules": {
+    "packages/foliate-js": "3d7941954a98b136316a795e8200d60c9643b141",
+    "packages/tauri": "382ea858bdd29458a5447e49c401b3ac64f0c3c0",
+    "packages/simplecc-wasm": "5e5b56f5b82394e7df07f9171ac70f4578b24a32",
+    "packages/qcms": "fc23a407f1ed9ccfea15875d27e0936dcc798a1f",
+    "packages/js-mdict": "d01bf62af872b1fbeacb2f18446460960e7400de",
+    "apps/readest-app/src-tauri/plugins/tauri-plugin-turso": "3c4be4fd92fbe11e8e374b6e8e85dbf9a3b1b4ac",
+    "apps/readest-app/src-tauri/plugins/tauri-plugin-webview-upgrade": "c7f9774b0396e32280108fa6c8ee3b1a971df5fc"
+  }
+}
