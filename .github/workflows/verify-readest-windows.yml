@@ -1,0 +1,37 @@
+name: Verify installed Lirelia Readest
+on:
+  push:
+    branches: ['codex/windows-readest']
+    paths: ['windows-verification/**', '.github/workflows/verify-readest-windows.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  installed-application:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: Lirelia-Readest-Windows-x64-installer
+          run-id: 39121146330
+          github-token: ${{ github.token }}
+          path: installer
+      - name: Install UI test dependency
+        working-directory: windows-verification
+        run: npm install --ignore-scripts
+      - name: Install and exercise real application
+        working-directory: windows-verification
+        shell: pwsh
+        run: ./install-and-test.ps1 -InstallerDirectory ../installer
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Lirelia-installed-Windows-verification
+          path: windows-verification/verification-results/
+          if-no-files-found: warn
