@@ -1,6 +1,11 @@
 {
   "productName": "Lirelia Readest",
   "identifier": "com.lirelia.readest",
+  "app": {
+    "security": {
+      "capabilities": ["default", "desktop-capability", "lirelia-local-core"]
+    }
+  },
   "bundle": {
     "externalBin": ["binaries/lirelia-core"],
     "createUpdaterArtifacts": false
