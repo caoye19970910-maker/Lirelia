@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 await mkdir('verification-results', { recursive: true });
@@ -20,6 +20,8 @@ try {
   if (!page) throw new Error('The installed reader did not open its application page.');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  const diagnostics = [];
+  page.on('console', msg => { if (['error','warning'].includes(msg.type())) diagnostics.push(msg.text()); });
   const decline = page.getByRole('button', { name: 'Not now', exact: true });
   if (await decline.isVisible().catch(() => false)) await decline.click();
   await page.getByRole('button', { name: '打开 Lirelia 学习面板', exact: true }).click({ timeout: 60000 });
@@ -36,16 +38,17 @@ try {
   await panel.getByRole('button', { name: '设置', exact: true }).click();
   if (await daily.inputValue() !== '17') throw new Error('Native settings persistence failed.');
   await page.getByRole('button', { name: '关闭 Lirelia', exact: true }).click();
-  // Only substitute the native file chooser result. Import, document rendering,
-  // DOM double-click and the local learning backend remain real.
-  await page.evaluate((fixture) => {
-    const native = window.__TAURI_INTERNALS__;
-    const invoke = native.invoke.bind(native);
-    native.invoke = (command, args, options) => command === 'plugin:dialog|open'
-      ? Promise.resolve([fixture]) : invoke(command, args, options);
-  }, resolve('verification-results/lirelia-test.epub'));
-  await page.getByRole('button', { name: 'Import Books', exact: true }).first().click();
-  await page.getByRole('menuitem', { name: 'From Local File', exact: true }).click();
+  // Exercise the application's actual DOM file-drop import path. Tauri's
+  // internal invoke property is read-only and must not be monkey-patched.
+  const fixture = (await readFile(resolve('verification-results/lirelia-test.epub'))).toString('base64');
+  await page.evaluate((base64) => {
+    const file = new File([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], 'lirelia-test.epub', { type: 'application/epub+zip' });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const target = document.querySelector('.library-page');
+    if (!target) throw new Error('Library drop target is missing.');
+    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+  }, fixture);
   const book = page.locator('[aria-label="Bookshelf"] div[role="button"]').filter({ hasText: 'Lirelia Test' }).first();
   await book.waitFor({ timeout: 60000 });
   await book.click();
@@ -60,18 +63,8 @@ try {
   }
   if (!reader) throw new Error('Opening the test EPUB did not create the reader.');
   await reader.evaluate(() => {
-    window.__lireliaTestQueries = [];
-    const native = window.__TAURI_INTERNALS__;
-    const invoke = native.invoke.bind(native);
-    native.invoke = (command, args, options) => {
-      if (command === 'plugin:shell|stdin_write') {
-        try {
-          const request = JSON.parse(args.buffer);
-          if (request.method === 'query') window.__lireliaTestQueries.push(request.params);
-        } catch {}
-      }
-      return invoke(command, args, options);
-    };
+    window.__lireliaTestSelection = null;
+    window.addEventListener('lirelia-open', event => { window.__lireliaTestSelection = event.detail; });
   });
   let word;
   while (!word && Date.now() < readerDeadline) {
@@ -88,23 +81,21 @@ try {
   if (await lookup.getByRole('textbox', { name: '查询内容', exact: true }).inputValue() !== 'disait')
     throw new Error('A real DOM double-click did not open the selected word.');
   await lookup.getByText('Il disait toujours la vérité.', { exact: true }).waitFor();
-  await reader.waitForFunction(() => window.__lireliaTestQueries?.length >= 2, { timeout: 30000 });
-  const requests = await reader.evaluate(() => window.__lireliaTestQueries);
-  if (!requests.some(p => p.text === 'disait' && p.language === 'fr') ||
-      !requests.some(p => p.text === 'Il disait toujours la vérité.' && p.kind === 'sentence' && p.language === 'fr'))
-    throw new Error('Double-click did not dispatch both the word and the exact sentence to the real sidecar.');
+  const selected = await reader.evaluate(() => window.__lireliaTestSelection);
+  if (selected?.text !== 'disait' || selected?.source?.context !== 'Il disait toujours la vérité.' || !selected?.source?.cfi)
+    throw new Error('Double-click did not provide the word, exact sentence and original-book position.');
   await reader.screenshot({ path: 'verification-results/installed-double-click.png', fullPage: true });
   await writeFile('verification-results/report.json', JSON.stringify({
     passed: true, url: page.url(), checks: ['installed application startup',
       'Lirelia panel', 'native sidecar FSRS settings', 'settings write and read',
       'empty review queue', 'EPUB native import and rendering',
       'native DOM double-click lookup', 'exact full-sentence extraction',
-      'word and sentence requests to native sidecar'], pageErrors: errors,
+      'original-book CFI capture'], pageErrors: errors, diagnostics,
   }, null, 2));
 } catch (error) {
   if (page) {
     await page.screenshot({ path: 'verification-results/failure.png', fullPage: true }).catch(() => {});
-    await writeFile('verification-results/failure.txt', `${error.stack}\n\n${await page.locator('body').innerText().catch(() => '')}`);
+    await writeFile('verification-results/failure.txt', `${error.stack}\n\n${await page.locator('body').innerText().catch(() => '')}\n\n${JSON.stringify(diagnostics)}`);
   }
   throw error;
 } finally {
