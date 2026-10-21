@@ -4,10 +4,12 @@ import { page } from 'vitest/browser';
 import '@/styles/globals.css';
 
 vi.mock('@/services/lirelia/client', () => ({
-  lireliaCall: async (method: string) => {
+  lireliaCall: async (method: string, params?: { kind?: string }) => {
     if (method === 'settings')
       return { autoSpeak: false, dailyNew: 15, models: [], credentials: {} };
     if (method === 'book_language') return 'fr';
+    if (method === 'query' && params?.kind === 'sentence')
+      return { kind: 'sentence', answer: '情况即将发生变化。' };
     if (method === 'query')
       return {
         kind: 'word',
