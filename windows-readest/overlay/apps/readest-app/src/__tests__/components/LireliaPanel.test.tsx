@@ -44,11 +44,15 @@ function select(text: string) {
 describe('Lirelia integration', () => {
   beforeEach(() => {
     call.mockReset();
-    call.mockImplementation(async (method: string, params: { text?: string }) => {
+    call.mockImplementation(async (method: string, params: { text?: string; kind?: string }) => {
       if (method === 'settings') return settings;
       if (method === 'book_language') return 'fr';
       if (method === 'query')
-        return { answer: '完整 Gemini 释义', kind: 'word', text: params.text };
+        return {
+          answer: params.kind === 'sentence' ? '整句中文译文' : '完整 Gemini 释义',
+          kind: params.kind ?? 'word',
+          text: params.text,
+        };
       if (method === 'speech') throw new Error('音频测试不联网');
       return true;
     });
@@ -73,6 +77,31 @@ describe('Lirelia integration', () => {
       ),
     );
     await screen.findByText('已收藏，已自动加入复习队列。');
+  });
+
+  it('keeps the word definition when sentence translation fails', async () => {
+    const original = call.getMockImplementation()!;
+    call.mockImplementation(async (method: string, params: { kind?: string }) => {
+      if (method === 'query' && params.kind === 'sentence') throw new Error('整句翻译失败');
+      return original(method, params);
+    });
+    render(<LireliaPanel />);
+    act(() => select('disait'));
+    await screen.findByText('完整 Gemini 释义');
+    await screen.findByText('整句翻译失败');
+    expect(screen.getByRole('button', { name: /^收藏$/ })).toBeTruthy();
+  });
+
+  it('shows the sentence while the definition is still pending', async () => {
+    const original = call.getMockImplementation()!;
+    call.mockImplementation(async (method: string, params: { kind?: string }) => {
+      if (method === 'query' && params.kind !== 'sentence') return new Promise(() => {});
+      return original(method, params);
+    });
+    render(<LireliaPanel />);
+    act(() => select('disait'));
+    await screen.findByText('整句中文译文');
+    expect(screen.queryByText('完整 Gemini 释义')).toBeNull();
   });
 
   it('does not play or display a stale query after the panel closes', async () => {

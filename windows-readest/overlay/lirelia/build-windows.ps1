@@ -33,7 +33,8 @@ Invoke-Checked 'pnpm' @('install', '--frozen-lockfile')
 Invoke-Checked 'pnpm' @('--filter', '@readest/readest-app', 'setup-vendors')
 Invoke-Checked 'pnpm' @('--filter', '@readest/readest-app', 'exec', 'dotenv', '-e', '.env.tauri', '--', 'next', 'typegen')
 Invoke-Checked 'pnpm' @('--filter', '@readest/readest-app', 'test', '--run',
-    'src/__tests__/components/LireliaPanel.test.tsx', 'src/__tests__/services/lirelia-client.test.ts')
+    'src/__tests__/components/LireliaPanel.test.tsx', 'src/__tests__/services/lirelia-client.test.ts',
+    'src/__tests__/services/lirelia-sentence.test.ts')
 Invoke-Checked 'pnpm' @('--filter', '@readest/readest-app', 'lint')
 if ($Dev) {
     Invoke-Checked 'pnpm' @('tauri', 'dev', '--config', 'src-tauri/tauri.lirelia.conf.json')

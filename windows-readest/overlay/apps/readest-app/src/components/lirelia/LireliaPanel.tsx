@@ -38,6 +38,9 @@ export default function LireliaPanel() {
   const [languageRequest, setLanguageRequest] = useState<LanguageRequest | null>(null);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [analysis, setAnalysis] = useState('');
+  const [sentenceTranslation, setSentenceTranslation] = useState('');
+  const [sentenceError, setSentenceError] = useState('');
+  const [sentenceBusy, setSentenceBusy] = useState(false);
   const [settings, setSettings] = useState<LireliaSettings | null>(null);
   const [cards, setCards] = useState<StudyCard[]>([]);
   const [summary, setSummary] = useState<StudySummary | null>(null);
@@ -119,6 +122,9 @@ export default function LireliaPanel() {
       setSelection(input);
       setResult(null);
       setAnalysis('');
+      setSentenceTranslation('');
+      setSentenceError('');
+      setSentenceBusy(false);
       setMessage('');
       setBusy(true);
       setOpen(true);
@@ -130,6 +136,26 @@ export default function LireliaPanel() {
               bookId: input.source.bookId,
             })) ?? 'fr')
           : language;
+        if (ticket !== generation.current) return;
+        setLanguage(lang);
+        const sentence = input.source?.context?.trim();
+        if (sentence && !/\s/.test(input.text.trim()) && sentence !== input.text.trim()) {
+          setSentenceBusy(true);
+          void lireliaCall<QueryResult>('query', {
+            text: sentence,
+            language: lang,
+            kind: 'sentence',
+          })
+            .then((value) => {
+              if (ticket === generation.current) setSentenceTranslation(value.answer);
+            })
+            .catch((error: unknown) => {
+              if (ticket === generation.current) setSentenceError(errorMessage(error));
+            })
+            .finally(() => {
+              if (ticket === generation.current) setSentenceBusy(false);
+            });
+        }
         const value = await lireliaCall<QueryResult>('query', { text: input.text, language: lang });
         if (ticket !== generation.current) return;
         setLanguage(lang);
@@ -392,6 +418,17 @@ export default function LireliaPanel() {
                 >
                   {busy ? '正在查询…' : '查询'}
                 </button>
+                {selection.source?.context &&
+                  !/\s/.test(selection.text.trim()) &&
+                  selection.source.context !== selection.text.trim() && (
+                    <section className='eink-bordered rounded-lg border p-3 space-y-2'>
+                      <h3 className='font-semibold'>整句翻译</h3>
+                      <p className='select-text text-sm'>{selection.source.context}</p>
+                      <p className='select-text whitespace-pre-wrap' role='status'>
+                        {sentenceBusy ? '正在翻译整句…' : sentenceTranslation || sentenceError}
+                      </p>
+                    </section>
+                  )}
                 {result && (
                   <>
                     <div className='flex flex-wrap gap-2'>

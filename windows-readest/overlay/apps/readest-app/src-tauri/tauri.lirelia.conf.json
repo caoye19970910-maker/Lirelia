@@ -3,12 +3,23 @@
   "identifier": "com.lirelia.readest",
   "app": {
     "security": {
-      "capabilities": ["default", "desktop-capability", "lirelia-local-core"]
+      "capabilities": [
+        "default",
+        "desktop-capability",
+        "lirelia-local-core"
+      ]
     }
   },
   "bundle": {
-    "externalBin": ["binaries/lirelia-core"],
+    "externalBin": [
+      "binaries/lirelia-core"
+    ],
     "createUpdaterArtifacts": false
   },
-  "plugins": { "updater": { "endpoints": [] } }
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  },
+  "version": "0.12.17"
 }

@@ -77,21 +77,343 @@ index 22feeae..f543bed 100644
        const params = new URLSearchParams();
        if (cfi) params.set('cfi', cfi);
        if (cfi && options?.highlightSearchResult) params.set('highlight', 'search');
+diff --git a/apps/readest-app/src/app/reader/components/BooksGrid.tsx b/apps/readest-app/src/app/reader/components/BooksGrid.tsx
+index 104703b..745c02b 100644
+--- a/apps/readest-app/src/app/reader/components/BooksGrid.tsx
++++ b/apps/readest-app/src/app/reader/components/BooksGrid.tsx
+@@ -20,7 +20,6 @@ import { type BottomCornerRadii, getCellCornerRadii, NO_CORNERS } from '../utils
+ import SearchResultsNav from './sidebar/SearchResultsNav';
+ import BooknotesNav from './sidebar/BooknotesNav';
+ import FoliateViewer from './FoliateViewer';
+-import HandwritingOverlay from './handwriting/HandwritingOverlay';
+ import SectionInfo from './SectionInfo';
+ import HeaderBar from './HeaderBar';
+ import PageNavigationButtons from './PageNavigationButtons';
+@@ -311,7 +310,6 @@ const BookCellInner: React.FC<BookCellProps> = ({
+         )}
+       </div>
+       {/* After the page chrome so it can't paint over ink near the edges. */}
+-      <HandwritingOverlay bookKey={bookKey} gridInsets={gridInsets} />
+       <BookmarkPullDown bookKey={bookKey} ribbonHidden={!!hoveredBookKey} slideRef={slideRef} />
+       <PageNavigationButtons bookKey={bookKey} isDropdownOpen={isDropdownOpen} />
+       <SearchResultsNav bookKey={bookKey} gridInsets={gridInsets} />
+diff --git a/apps/readest-app/src/app/reader/components/FoliateViewer.tsx b/apps/readest-app/src/app/reader/components/FoliateViewer.tsx
+index be3c90c..70f05e8 100644
+--- a/apps/readest-app/src/app/reader/components/FoliateViewer.tsx
++++ b/apps/readest-app/src/app/reader/components/FoliateViewer.tsx
+@@ -82,7 +82,6 @@ import { TransformContext } from '@/services/transformers/types';
+ import { transformContent } from '@/services/transformService';
+ import { sanitizeSvg } from '@/services/transformers/sanitizer';
+ import { lockScreenOrientation, setSelectionSuppressed } from '@/utils/bridge';
+-import { useTextTranslation } from '../hooks/useTextTranslation';
+ import { useBookCoverAutoSave } from '../hooks/useAutoSaveBookCover';
+ import { useDiscordPresence } from '@/hooks/useDiscordPresence';
+ import { manageSyntaxHighlighting } from '@/utils/highlightjs';
+@@ -209,7 +208,6 @@ const FoliateViewer: React.FC<{
+   const { syncState, conflictDetails, resolveWithLocal, resolveWithRemote } = useKOSync(bookKey);
+   const bookOrbitSync = useKOSync(bookKey, bookOrbitProgressProvider);
+   useFileSync(bookKey);
+-  useTextTranslation(bookKey, viewRef.current);
+ 
+   // Coalesce setProgress writes within a single animation frame.
+   //
+diff --git a/apps/readest-app/src/app/reader/components/HeaderBar.tsx b/apps/readest-app/src/app/reader/components/HeaderBar.tsx
+index dcacc76..4ad2f18 100644
+--- a/apps/readest-app/src/app/reader/components/HeaderBar.tsx
++++ b/apps/readest-app/src/app/reader/components/HeaderBar.tsx
+@@ -30,7 +30,6 @@ import QuickActionMenu from './annotator/QuickActionMenu';
+ import SidebarToggler from './SidebarToggler';
+ import BookmarkToggler from './BookmarkToggler';
+ import NotebookToggler from './NotebookToggler';
+-import TranslationToggler from './TranslationToggler';
+ import ViewMenu from './ViewMenu';
+ import SyncInfoDialog from './SyncInfoDialog';
+ 
+@@ -273,7 +272,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
+               <VscLibrary size={iconSize18} className='fill-base-content' />
+             </button>
+             <BookmarkToggler bookKey={bookKey} />
+-            <TranslationToggler bookKey={bookKey} />
+           </div>
+           {enableAnnotationQuickActions && (
+             <Dropdown
+diff --git a/apps/readest-app/src/app/reader/components/Reader.tsx b/apps/readest-app/src/app/reader/components/Reader.tsx
+index 8e0f994..4f23cc9 100644
+--- a/apps/readest-app/src/app/reader/components/Reader.tsx
++++ b/apps/readest-app/src/app/reader/components/Reader.tsx
+@@ -16,8 +16,6 @@ import { useSettingsStore } from '@/store/settingsStore';
+ import { useDeviceControlStore } from '@/store/deviceStore';
+ import { useScreenWakeLock } from '@/hooks/useScreenWakeLock';
+ import { useScreenBrightness } from '@/app/reader/hooks/useScreenBrightness';
+-import { useTransferQueue } from '@/hooks/useTransferQueue';
+-import { useReplicaPull } from '@/hooks/useReplicaPull';
+ import { eventDispatcher } from '@/utils/event';
+ import { interceptWindowOpen } from '@/utils/open';
+ import { mountAdditionalFonts } from '@/styles/fonts';
+@@ -75,13 +73,12 @@ const Reader: React.FC<{ ids?: string }> = ({ ids }) => {
+   });
+   useScreenWakeLock(settings.screenWakeLock, appService?.hasWindow, appService?.isIOSApp);
+   useScreenBrightness();
+-  useTransferQueue(libraryLoaded, 5000);
++
+   // Reader needs dictionaries for word-lookup, fonts for rendering, and
+   // textures for the page background. Mounted here (not in the app-
+   // router page wrapper) so the web pages-router entry at
+   // `pages/reader/[ids].tsx` also gets the pull. Module-scoped dedup
+   // means navigating between library and reader doesn't re-pull.
+-  useReplicaPull({ kinds: ['dictionary', 'font', 'texture'] });
+ 
+   useEffect(() => {
+     mountAdditionalFonts(document);
+diff --git a/apps/readest-app/src/app/reader/components/ViewMenu.tsx b/apps/readest-app/src/app/reader/components/ViewMenu.tsx
+index c88ac92..b3573e3 100644
+--- a/apps/readest-app/src/app/reader/components/ViewMenu.tsx
++++ b/apps/readest-app/src/app/reader/components/ViewMenu.tsx
+@@ -162,11 +162,6 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
+     eventDispatcher.dispatch('push-kosync', { bookKey, provider: 'bookorbit' });
+   };
+ 
+-  const handleStartRSVP = () => {
+-    setIsDropdownOpen?.(false);
+-    eventDispatcher.dispatch('rsvp-start', { bookKey });
+-  };
+-
+   const toggleAutoScroll = () => {
+     setIsDropdownOpen?.(false);
+     eventDispatcher.dispatch('autoscroll-toggle', { bookKey });
+@@ -541,7 +536,6 @@ const ViewMenu: React.FC<ViewMenuProps> = ({
+             Icon={isParagraphMode ? MdCheck : undefined}
+             onClick={toggleParagraphMode}
+           />
+-          <MenuItem label={_('Speed Reading Mode')} shortcut='Shift+V' onClick={handleStartRSVP} />
+         </>
+       )}
+ 
 diff --git a/apps/readest-app/src/app/reader/components/annotator/Annotator.tsx b/apps/readest-app/src/app/reader/components/annotator/Annotator.tsx
-index f8dd5b2..348988e 100644
+index f8dd5b2..0ebf58a 100644
 --- a/apps/readest-app/src/app/reader/components/annotator/Annotator.tsx
 +++ b/apps/readest-app/src/app/reader/components/annotator/Annotator.tsx
-@@ -1,5 +1,8 @@
+@@ -1,5 +1,10 @@
  import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
  import { RiDeleteBinLine } from 'react-icons/ri';
 +import { LuGraduationCap } from 'react-icons/lu';
 +import { isTauriAppPlatform } from '@/services/environment';
 +import { openLirelia } from '@/services/lirelia/client';
++import { sentenceAtRange } from '@/services/lirelia/sentence';
++import { getWordRangeFromPoint } from '@/utils/sel';
  
  import * as CFI from 'foliate-js/epubcfi.js';
  import { useEnv } from '@/context/EnvContext';
-@@ -2593,6 +2596,29 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+@@ -20,30 +25,18 @@ import { useSettingsStore } from '@/store/settingsStore';
+ import { useReaderStore } from '@/store/readerStore';
+ import { useNotebookStore } from '@/store/notebookStore';
+ import { useSidebarStore } from '@/store/sidebarStore';
+-import { useCustomDictionaryStore } from '@/store/customDictionaryStore';
+-import { isSystemDictionaryEnabled } from '@/services/dictionaries/registry';
+-import { invokeSystemDictionary } from '@/services/dictionaries/systemDictionary';
+-import { buildSelectionContext } from '@/services/dictionaries/contextDictionary';
+-import type { DictionarySelectionContext } from '@/services/dictionaries/types';
+ import { useTranslation } from '@/hooks/useTranslation';
+ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
+ import { useDeviceControlStore } from '@/store/deviceStore';
+ import { useFoliateEvents } from '../../hooks/useFoliateEvents';
+ import { useRendererInputListeners } from '../../hooks/useRendererInputListeners';
+-import { useBookOrbitNotesSync } from '../../hooks/useBookOrbitNotesSync';
+ import { useNotesSync } from '../../hooks/useNotesSync';
+-import { useReadwiseSync } from '../../hooks/useReadwiseSync';
+-import { useHardcoverSync } from '../../hooks/useHardcoverSync';
+-import { usePageboundSync } from '../../hooks/usePageboundSync';
+-import { useNotionSync } from '../../hooks/useNotionSync';
+ import { useTextSelector } from '../../hooks/useTextSelector';
+ import { useSaveBooknoteNoteText } from '../../hooks/useSaveBooknoteNoteText';
+ import { placeToolbar, Point, Position, Rect, TextSelection } from '@/utils/sel';
+ import {
+   getPopupPosition,
+   getPosition,
+-  getRangeRectInWebview,
+-  getRangeTextStyleInWebview,
+   getTextFromRange,
+   getRenderedRunsFromRange,
+ } from '@/utils/sel';
+@@ -95,12 +88,8 @@ import AnnotationRangeEditor from './AnnotationRangeEditor';
+ import PageTurnHint from './PageTurnHint';
+ import SelectionRangeEditor from './SelectionRangeEditor';
+ import AnnotationPopup from './AnnotationPopup';
+-import DictionaryPopup from './DictionaryPopup';
+-import DictionarySheet from './DictionarySheet';
+ import NoteEditorSheet from './NoteEditorSheet';
+-import TranslatorPopup from './TranslatorPopup';
+ import useShortcuts from '@/hooks/useShortcuts';
+-import ProofreadPopup from './ProofreadPopup';
+ import { setProofreadRulesVisibility } from '@/app/reader/components/ProofreadRules';
+ import ExportMarkdownDialog from './ExportMarkdownDialog';
+ import QuoteCardDialog from './QuoteCardDialog';
+@@ -139,8 +128,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+ }) => {
+   const _ = useTranslation();
+   const { envConfig, appService } = useEnv();
+-  const { settings, setSettingsDialogBookKey, setSettingsDialogOpen, setActiveSettingsItemId } =
+-    useSettingsStore();
++  const { settings } = useSettingsStore();
+   const { isDarkMode, isIPhoneDuo, themeCode } = useThemeStore();
+   // Per-field selectors — see store/readerProgressStore.ts header for the
+   // "destructure-subscribes-the-whole-store" rationale.
+@@ -155,24 +143,11 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   const { setNotebookVisible, setNotebookActiveTab } = useNotebookStore();
+   const { clearBooknotesNav, isSideBarVisible } = useSidebarStore();
+   const { listenToNativeTouchEvents } = useDeviceControlStore();
+-  const { loadCustomDictionaries } = useCustomDictionaryStore();
+   const { selectFiles } = useFileSelector(appService, _);
+ 
+   const saveBooknoteNoteText = useSaveBooknoteNoteText(bookKey);
+ 
+   useNotesSync(bookKey);
+-  useBookOrbitNotesSync(bookKey);
+-  useReadwiseSync(bookKey);
+-  useHardcoverSync(bookKey);
+-  usePageboundSync(bookKey);
+-  useNotionSync(bookKey);
+-
+-  useEffect(() => {
+-    void loadCustomDictionaries(envConfig).catch((error) => {
+-      console.warn('Failed to load custom dictionaries:', error);
+-    });
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+-  }, []);
+ 
+   const osPlatform = getOSPlatform();
+   const config = getConfig(bookKey)!;
+@@ -199,9 +174,9 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   // The side of the tapped word the footnote popup took, when one is open: a
+   // tap on a highlighted link opens both it and this toolbar (#6390).
+   const [footnotePopupDir, setFootnotePopupDir] = useState<Position['dir'] | null>(null);
+-  const [dictPopupPosition, setDictPopupPosition] = useState<Position>();
+-  const [translatorPopupPosition, setTranslatorPopupPosition] = useState<Position>();
+-  const [proofreadPopupPosition, setProofreadPopupPosition] = useState<Position>();
++  const [, setDictPopupPosition] = useState<Position>();
++  const [, setTranslatorPopupPosition] = useState<Position>();
++  const [, setProofreadPopupPosition] = useState<Position>();
+   const [highlightOptionsVisible, setHighlightOptionsVisible] = useState(false);
+   const [showAnnotationNotes, setShowAnnotationNotes] = useState(false);
+   // The note the Annotate action is currently collecting, plus the highlights
+@@ -460,21 +435,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+     [],
+   );
+ 
+-  // The passage around the looked-up text, for the AI context dictionary (#5544).
+-  const dictionarySelection = useMemo<DictionarySelectionContext | undefined>(
+-    () =>
+-      showDictionaryPopup && selection?.range
+-        ? {
+-            ...buildSelectionContext(selection.range),
+-            bookTitle: bookData.book?.title,
+-            bookAuthor: bookData.book?.author,
+-            targetLang: viewSettings.translateTargetLang,
+-          }
+-        : undefined,
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+-    [showDictionaryPopup, selection],
+-  );
+-
+   const getAnnotationText = useCallback(
+     async (range: Range) => {
+       transformCtx['content'] = getTextFromRange(range, ['rt']);
+@@ -521,7 +481,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+     handleContextmenu,
+     dragSelectionTo,
+     suppressNativeSelectionHandles,
+-    restoreSelectionRange,
+     noteAutoTurnPoint,
+     cancelAutoTurn,
+     onAutoTurn,
+@@ -709,6 +668,29 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+         opts,
+       );
+     }
++    detail.doc?.addEventListener(
++      'dblclick',
++      (ev: MouseEvent) => {
++        if (!isTauriAppPlatform()) return;
++        const range = getWordRangeFromPoint(doc, ev.clientX, ev.clientY);
++        const text = range?.toString().trim();
++        if (!range || !text) return;
++        ev.preventDefault();
++        ev.stopImmediatePropagation();
++        openLirelia({
++          text,
++          source: {
++            bookId: bookKey.split('-')[0]!,
++            bookKey,
++            title: bookData.book?.title ?? '',
++            cfi: view?.getCFI(index, range),
++            context: sentenceAtRange(range),
++          },
++        });
++        handleDismissPopupAndSelection();
++      },
++      true,
++    );
+     detail.doc?.addEventListener('mousedown', (ev: MouseEvent) => handleMouseDown(ev));
+     detail.doc?.addEventListener('pointerdown', handlePointerDown.bind(null, doc, index), opts);
+     detail.doc?.addEventListener('pointermove', handlePointerMove.bind(null, doc, index), opts);
+@@ -1850,39 +1832,20 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   };
+ 
+   const handleDictionary = () => {
+-    if (!selection || !selection.text) return;
+-    // System-dictionary path: when the user has opted in via Settings →
+-    // Languages → Dictionaries, hand the selection to the OS instead of
+-    // opening the in-app popup. Exclusivity is enforced at the store
+-    // level (enabling system disables everything else and vice versa),
+-    // so a single check on the system flag is sufficient.
+-    const dictSettings = useCustomDictionaryStore.getState().settings;
+-    if (isSystemDictionaryEnabled(dictSettings)) {
+-      // Build the macOS HUD anchor: the selection rect (so the HUD
+-      // appears at the original word) and the underlying paragraph's
+-      // text style (so AppKit re-draws the small label at the same
+-      // font size / colour as the original, matching the system
+-      // right-click → Look Up presentation).
+-      const rect = selection.range ? getRangeRectInWebview(selection.range) : null;
+-      const style = selection.range ? getRangeTextStyleInWebview(selection.range) : null;
+-      void invokeSystemDictionary(
+-        selection.text,
+-        rect ? { rect, style: style ?? undefined } : undefined,
+-      );
+-      handleDismissPopupAndSelection();
+-      return;
+-    }
+-    setShowAnnotPopup(false);
+-    void suppressNativeSelectionHandles();
+-    setShowDictionaryPopup(true);
+-  };
+-
+-  const handleTranslation = () => {
+-    if (!selection || !selection.text) return;
+-    setShowAnnotPopup(false);
+-    void suppressNativeSelectionHandles();
+-    setShowDeepLPopup(true);
++    if (!selection?.text) return;
++    openLirelia({
++      text: selection.text,
++      source: {
++        bookId: bookKey.split('-')[0]!,
++        bookKey,
++        title: bookData.book?.title ?? '',
++        cfi: selection.cfi,
++        context: selection.range ? sentenceAtRange(selection.range) : selection.text,
++      },
++    });
++    handleDismissPopupAndSelection();
+   };
++  const handleTranslation = handleDictionary;
+ 
+   // `oneTime` is required rather than defaulted: it decides whether this reads
+   // the selection and stops or starts an open-ended session from it, and every
+@@ -2591,8 +2554,29 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   };
+ 
    const toolButtons = toolbarToolTypes
++    .filter((tool) => !['tts', 'proofread'].includes(tool))
      .map(buildToolButton)
      .filter((button): button is NonNullable<typeof button> => button !== null);
 +  if (isTauriAppPlatform()) {
@@ -100,9 +422,6 @@ index f8dd5b2..348988e 100644
 +      Icon: LuGraduationCap,
 +      onClick: () => {
 +        if (!selection?.text) return;
-+        const context = selection.range
-+          ? buildSelectionContext(selection.range)
-+          : { before: '', after: '' };
 +        openLirelia({
 +          text: selection.text,
 +          source: {
@@ -110,7 +429,7 @@ index f8dd5b2..348988e 100644
 +            bookKey,
 +            title: bookData.book?.title ?? '',
 +            cfi: selection.cfi ?? view?.getCFI(selection.index, selection.range),
-+            context: `${context.before} ${selection.text} ${context.after}`.trim(),
++            context: selection.range ? sentenceAtRange(selection.range) : selection.text,
 +          },
 +        });
 +        handleDismissPopupAndSelection();
@@ -120,6 +439,241 @@ index f8dd5b2..348988e 100644
  
    // The lookup popups never deselect (handleDictionary / handleTranslation /
    // handleProofread only flip popup flags), so a genuine selection is still
+@@ -2604,31 +2588,6 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   // consuming actions are a different class by design — copy, share, search,
+   // and TTS spend the selection (TTS deselects deliberately), and highlight /
+   // annotate replace it with the created annotation — so they are not here.
+-  const handleDismissPopupShowToolbar = () => {
+-    // The instant dictionary is the one lookup that deselects as it opens, so
+-    // its dismiss has to put the range back before the check below — otherwise
+-    // the word it just defined can never be highlighted or copied (#6213).
+-    // That is opt-in: by default the dismiss returns straight to reading (#6454).
+-    if (instantLookupDeselectedRef.current) {
+-      instantLookupDeselectedRef.current = false;
+-      if (
+-        viewSettings.keepSelectionAfterLookup &&
+-        selection &&
+-        restoreSelectionRange(selection.range)
+-      ) {
+-        isTextSelected.current = true;
+-        // `quickActionHandled` rides along with the selection from here on, so a
+-        // later republish of it (handleHighlight stamps `annotated`) can't be
+-        // read as a fresh selection and re-open the lookup we just closed.
+-        setSelection({ ...selection, quickActionHandled: true });
+-      }
+-    }
+-    if (isTextSelected.current && toolButtons.length > 0) {
+-      handleShowAnnotPopup();
+-    } else {
+-      handleDismissPopupAndSelection();
+-    }
+-  };
+ 
+   // The range editors are fixed full-screen overlays rendered after the popups
+   // and sheets, so their handles would float on top of the dictionary, the
+@@ -2651,58 +2610,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+   return (
+     <div ref={containerRef} role='toolbar' tabIndex={-1}>
+       <PageTurnHint bookKey={bookKey} contentInsets={contentInsets} hint={turnHint} />
+-      {showDictionaryPopup &&
+-        (() => {
+-          // Below `sm` (or short landscape) we present the dictionary as a
+-          // bottom sheet — the anchored popup gets cramped at this size.
+-          // Matches the `isMobile` heuristic used by `Dialog`.
+-          const useSheet = window.innerWidth < 640 || window.innerHeight < 640;
+-          const onManage = () => {
+-            // Dismiss so the user returns to the reader cleanly when they
+-            // close settings; the dictionaries sub-page in SettingsDialog
+-            // is enough surface for managing providers.
+-            handleDismissPopupAndSelection();
+-            setSettingsDialogBookKey(bookKey);
+-            setActiveSettingsItemId('settings.language.dictionaries.manage');
+-            setSettingsDialogOpen(true);
+-          };
+-          if (useSheet) {
+-            return (
+-              <DictionarySheet
+-                word={selection?.text as string}
+-                lang={bookData.bookDoc?.metadata.language as string}
+-                selection={dictionarySelection}
+-                onDismiss={handleDismissPopupShowToolbar}
+-                onManage={onManage}
+-              />
+-            );
+-          }
+-          if (!trianglePosition || !dictPopupPosition) return null;
+-          return (
+-            <DictionaryPopup
+-              word={selection?.text as string}
+-              lang={bookData.bookDoc?.metadata.language as string}
+-              selection={dictionarySelection}
+-              position={dictPopupPosition}
+-              trianglePosition={trianglePosition}
+-              popupWidth={dictPopupWidth}
+-              popupHeight={dictPopupHeight}
+-              onDismiss={handleDismissPopupShowToolbar}
+-              onManage={onManage}
+-            />
+-          );
+-        })()}
+-      {showDeepLPopup && trianglePosition && translatorPopupPosition && (
+-        <TranslatorPopup
+-          bookKey={bookKey}
+-          text={selection?.text as string}
+-          position={translatorPopupPosition}
+-          trianglePosition={trianglePosition}
+-          popupWidth={transPopupWidth}
+-          popupHeight={transPopupHeight}
+-          onDismiss={handleDismissPopupShowToolbar}
+-        />
+-      )}
++
+       {noteEditorInSheet && (
+         <NoteEditorSheet
+           value={editedNoteText}
+@@ -2747,21 +2655,7 @@ const Annotator: React.FC<{ bookKey: string; contentInsets: Insets; gridInsets?:
+             onDismiss={noteEditorTarget ? handleCancelNote : handleDismissPopupAndSelection}
+           />
+         )}
+-      {showProofreadPopup && trianglePosition && proofreadPopupPosition && selection && (
+-        <ProofreadPopup
+-          bookKey={bookKey}
+-          selection={selection}
+-          position={proofreadPopupPosition}
+-          trianglePosition={trianglePosition}
+-          popupWidth={proofreadPopupWidth}
+-          popupHeight={proofreadPopupHeight}
+-          onDismiss={handleDismissPopupShowToolbar}
+-          onManage={() => {
+-            handleDismissPopupAndSelection();
+-            setProofreadRulesVisibility(true);
+-          }}
+-        />
+-      )}
++
+       {!editingAnnotation &&
+         !overlaySurfaceOpen &&
+         selection?.handlesSuppressed &&
+diff --git a/apps/readest-app/src/app/reader/components/footerbar/FooterBar.tsx b/apps/readest-app/src/app/reader/components/footerbar/FooterBar.tsx
+index 78c8a97..88e9d4c 100644
+--- a/apps/readest-app/src/app/reader/components/footerbar/FooterBar.tsx
++++ b/apps/readest-app/src/app/reader/components/footerbar/FooterBar.tsx
+@@ -13,11 +13,9 @@ import { eventDispatcher } from '@/utils/event';
+ import type { FooterBarProps, NavigationHandlers, FooterBarChildProps } from './types';
+ import { debounce } from '@/utils/debounce';
+ import { isForcedMobileLayout } from '../../utils/mobileLayout';
+-import { RSVPControl } from '../rsvp';
+ import MobileFooterBar from './MobileFooterBar';
+ import DesktopFooterBar from './DesktopFooterBar';
+ import { getFooterBarPosition } from './position';
+-import TTSControl from '../tts/TTSControl';
+ 
+ const FooterBar: React.FC<FooterBarProps> = ({
+   bookKey,
+@@ -268,9 +266,6 @@ const FooterBar: React.FC<FooterBarProps> = ({
+       {isVisible && needHorizontalScroll && (
+         <div className='bg-base-100 pointer-events-none absolute bottom-0 left-0 hidden h-3 w-full sm:block' />
+       )}
+-
+-      <TTSControl bookKey={bookKey} gridInsets={gridInsets} />
+-      <RSVPControl bookKey={bookKey} gridInsets={gridInsets} />
+     </>
+   );
+ };
+diff --git a/apps/readest-app/src/app/reader/components/notebook/Notebook.tsx b/apps/readest-app/src/app/reader/components/notebook/Notebook.tsx
+index 1613842..cec4983 100644
+--- a/apps/readest-app/src/app/reader/components/notebook/Notebook.tsx
++++ b/apps/readest-app/src/app/reader/components/notebook/Notebook.tsx
+@@ -6,7 +6,6 @@ import { useBookDataStore } from '@/store/bookDataStore';
+ import { useReaderStore } from '@/store/readerStore';
+ import { useSidebarStore } from '@/store/sidebarStore';
+ import { useNotebookStore } from '@/store/notebookStore';
+-import { useAIChatStore } from '@/store/aiChatStore';
+ import { useTranslation } from '@/hooks/useTranslation';
+ import { useThemeStore } from '@/store/themeStore';
+ import { useEnv } from '@/context/EnvContext';
+@@ -24,10 +23,8 @@ import {
+   flushNotebookDocument,
+   useNotebookDocumentCoordinator,
+ } from '../../hooks/useNotebookDocumentCoordinator';
+-import AIAssistant from './AIAssistant';
+ import NotebookHeader from './Header';
+ import NotebookEditor from './NotebookEditor';
+-import NotebookTabNavigation from './NotebookTabNavigation';
+ 
+ const MIN_NOTEBOOK_WIDTH = 0.15;
+ const MAX_NOTEBOOK_WIDTH = 0.45;
+@@ -44,7 +41,6 @@ const Notebook: React.FC = () => {
+     notebookWidth,
+     isNotebookVisible,
+     isNotebookPinned,
+-    notebookActiveTab,
+     getNotebookWidth,
+     setNotebookWidth,
+     setNotebookVisible,
+@@ -54,7 +50,6 @@ const Notebook: React.FC = () => {
+   } = useNotebookStore();
+   const { getBookData, getConfig, setConfig, updateBooknotes, saveConfig } = useBookDataStore();
+   const { getViewSettings } = useReaderStore();
+-  const { activeConversationId } = useAIChatStore();
+ 
+   useNotebookDocumentCoordinator(sideBarBookKey);
+ 
+@@ -98,7 +93,7 @@ const Notebook: React.FC = () => {
+     setNotebookPin(settings.globalReadSettings.isNotebookPinned);
+     setNotebookVisible(settings.globalReadSettings.isNotebookPinned);
+     if (settings.globalReadSettings.notebookActiveTab) {
+-      setNotebookActiveTab(settings.globalReadSettings.notebookActiveTab);
++      setNotebookActiveTab('notes');
+     }
+     // The settings store only hydrates the Notebook store when this panel mounts.
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+@@ -126,14 +121,6 @@ const Notebook: React.FC = () => {
+     });
+   };
+ 
+-  const handleTabChange = (tab: 'notes' | 'ai') => {
+-    setNotebookActiveTab(tab);
+-    saveSysSettings(envConfig, 'globalReadSettings', {
+-      ...settings.globalReadSettings,
+-      notebookActiveTab: tab,
+-    });
+-  };
+-
+   const handleOpenAnnotations = () => {
+     if (!sideBarBookKey) return;
+     setSearchBarVisible(false);
+@@ -263,24 +250,12 @@ const Notebook: React.FC = () => {
+             handleTogglePin={handleTogglePin}
+           />
+         </div>
+-        {notebookActiveTab === 'ai' ? (
+-          <div className='flex min-h-0 flex-1 flex-col'>
+-            <AIAssistant key={activeConversationId ?? 'new'} bookKey={sideBarBookKey} />
+-          </div>
+-        ) : (
+-          <NotebookEditor
+-            bookKey={sideBarBookKey}
+-            handleOpenAnnotations={handleOpenAnnotations}
+-            excerpts={excerptNotes}
+-            onDeleteExcerpt={handleDeleteExcerpt}
+-          />
+-        )}
+-        <div
+-          className='shrink-0'
+-          style={{ paddingBottom: `${(safeAreaInsets?.bottom || 0) / 2}px` }}
+-        >
+-          <NotebookTabNavigation activeTab={notebookActiveTab} onTabChange={handleTabChange} />
+-        </div>
++        <NotebookEditor
++          bookKey={sideBarBookKey}
++          handleOpenAnnotations={handleOpenAnnotations}
++          excerpts={excerptNotes}
++          onDeleteExcerpt={handleDeleteExcerpt}
++        />
+       </div>
+     </>
+   ) : null;
 diff --git a/apps/readest-app/src/components/Providers.tsx b/apps/readest-app/src/components/Providers.tsx
 index 6964f44..5768ff1 100644
 --- a/apps/readest-app/src/components/Providers.tsx
@@ -140,3 +694,83 @@ index 6964f44..5768ff1 100644
                    <CommandPalette />
                    <AtmosphereOverlay />
                    <PassphrasePrompt />
+diff --git a/apps/readest-app/src/components/settings/SettingsDialog.tsx b/apps/readest-app/src/components/settings/SettingsDialog.tsx
+index 87c350b..5e15690 100644
+--- a/apps/readest-app/src/components/settings/SettingsDialog.tsx
++++ b/apps/readest-app/src/components/settings/SettingsDialog.tsx
+@@ -5,10 +5,10 @@ import { useSettingsStore } from '@/store/settingsStore';
+ import { useResponsiveSize } from '@/hooks/useResponsiveSize';
+ import { useTranslation } from '@/hooks/useTranslation';
+ import { useCommandPalette } from '@/components/command-palette';
+-import { RiFontSize, RiShareLine } from 'react-icons/ri';
+-import { RiDashboardLine, RiTranslate } from 'react-icons/ri';
++import { RiFontSize } from 'react-icons/ri';
++import { RiDashboardLine } from 'react-icons/ri';
+ import { VscSymbolColor } from 'react-icons/vsc';
+-import { PiDotsThreeVerticalBold, PiRobot, PiSpeakerHigh } from 'react-icons/pi';
++import { PiDotsThreeVerticalBold } from 'react-icons/pi';
+ import { LiaHandPointerSolid } from 'react-icons/lia';
+ import { IoAccessibilityOutline } from 'react-icons/io5';
+ import {
+@@ -24,15 +24,11 @@ import { getCommandPaletteShortcut } from '@/services/environment';
+ import FontPanel from './FontPanel';
+ import LayoutPanel from './LayoutPanel';
+ import ThemePanel from './ThemePanel';
+-import IntegrationsPanel from './IntegrationsPanel';
+ import Dropdown from '@/components/Dropdown';
+ import Dialog from '@/components/Dialog';
+ import DialogMenu from './DialogMenu';
+ import ControlPanel from './ControlPanel';
+-import LangPanel from './LangPanel';
+ import MiscPanel from './MiscPanel';
+-import AIPanel from './AIPanel';
+-import TTSPanel from './TTSPanel';
+ 
+ export type SettingsPanelType =
+   | 'Font'
+@@ -110,27 +106,6 @@ const SettingsDialog: React.FC<{ bookKey: string }> = ({ bookKey }) => {
+       icon: LiaHandPointerSolid,
+       label: _('Behavior'),
+     },
+-    {
+-      tab: 'Language',
+-      icon: RiTranslate,
+-      label: _('Language'),
+-    },
+-    {
+-      tab: 'Integrations',
+-      icon: RiShareLine,
+-      label: _('Integrations'),
+-    },
+-    {
+-      tab: 'AI',
+-      icon: PiRobot,
+-      label: _('AI Assistant'),
+-      disabled: process.env.NODE_ENV === 'production',
+-    },
+-    {
+-      tab: 'TTS',
+-      icon: PiSpeakerHigh,
+-      label: _('TTS'),
+-    },
+     {
+       tab: 'Custom',
+       icon: IoAccessibilityOutline,
+@@ -589,17 +564,6 @@ const SettingsDialog: React.FC<{ bookKey: string }> = ({ bookKey }) => {
+             onRegisterReset={(fn) => registerResetFunction('Control', fn)}
+           />
+         )}
+-        {activePanel === 'TTS' && (
+-          <TTSPanel bookKey={bookKey} onRegisterReset={(fn) => registerResetFunction('TTS', fn)} />
+-        )}
+-        {activePanel === 'Language' && (
+-          <LangPanel
+-            bookKey={bookKey}
+-            onRegisterReset={(fn) => registerResetFunction('Language', fn)}
+-          />
+-        )}
+-        {activePanel === 'AI' && <AIPanel />}
+-        {activePanel === 'Integrations' && <IntegrationsPanel />}
+         {activePanel === 'Custom' && (
+           <MiscPanel
+             bookKey={bookKey}
