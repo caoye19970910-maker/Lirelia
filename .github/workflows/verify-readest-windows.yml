@@ -10,16 +10,21 @@ permissions:
 jobs:
   installed-application:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Wait for the lightweight installer build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh run watch 39552438192 --exit-status --interval 20
       - uses: actions/download-artifact@v4
         with:
           name: Lirelia-Readest-Windows-x64-installer
-          run-id: 39121146330
+          run-id: 39552438192
           github-token: ${{ github.token }}
           path: installer
       - name: Install UI test dependency

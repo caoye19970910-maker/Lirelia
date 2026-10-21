@@ -40,6 +40,8 @@ New-Item $policy -Force | Out-Null
 New-ItemProperty $policy -Name 'readest.exe' -Value '--remote-debugging-port=9222' -PropertyType String -Force | Out-Null
 try {
     $app = Start-Process $application -PassThru
+    python create-test-book.py
+    if ($LASTEXITCODE -ne 0) { throw "Creating the native reader test EPUB failed." }
     node check-ui.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Installed application UI verification failed.' }
 } finally {
