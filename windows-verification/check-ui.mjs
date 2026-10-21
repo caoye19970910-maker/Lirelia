@@ -1,6 +1,8 @@
 import { chromium } from 'playwright';
-import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 await mkdir('verification-results', { recursive: true });
 let browser;
@@ -11,6 +13,7 @@ while (!browser && Date.now() < deadline) {
 }
 if (!browser) throw new Error('Installed Windows application did not expose its test WebView.');
 let page;
+const diagnostics = [];
 try {
   while (!page && Date.now() < deadline) {
     page = browser.contexts().flatMap(context => context.pages())
@@ -20,8 +23,7 @@ try {
   if (!page) throw new Error('The installed reader did not open its application page.');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  const diagnostics = [];
-  page.on('console', msg => { if (['error','warning'].includes(msg.type())) diagnostics.push(msg.text()); });
+  page.on('console', msg => { diagnostics.push(`${msg.type()}: ${msg.text()}`); });
   const decline = page.getByRole('button', { name: 'Not now', exact: true });
   if (await decline.isVisible().catch(() => false)) await decline.click();
   await page.getByRole('button', { name: '打开 Lirelia 学习面板', exact: true }).click({ timeout: 60000 });
@@ -38,28 +40,20 @@ try {
   await panel.getByRole('button', { name: '设置', exact: true }).click();
   if (await daily.inputValue() !== '17') throw new Error('Native settings persistence failed.');
   await page.getByRole('button', { name: '关闭 Lirelia', exact: true }).click();
-  // Exercise the application's actual DOM file-drop import path. Tauri's
-  // internal invoke property is read-only and must not be monkey-patched.
-  const fixture = (await readFile(resolve('verification-results/lirelia-test.epub'))).toString('base64');
-  await page.evaluate((base64) => {
-    const file = new File([Uint8Array.from(atob(base64), c => c.charCodeAt(0))], 'lirelia-test.epub', { type: 'application/epub+zip' });
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    const target = document.querySelector('.library-page');
-    if (!target) throw new Error('Library drop target is missing.');
-    target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
-  }, fixture);
-  const book = page.locator('[aria-label="Bookshelf"] div[role="button"]').filter({ hasText: 'Lirelia Test' }).first();
-  await book.waitFor({ timeout: 60000 });
-  await book.click();
-  await page.getByRole('dialog', { name: '选择这本书的阅读语言' })
-    .getByRole('button', { name: '法语', exact: true }).click();
+  // Open the real installed EXE with a file argument, using its native
+  // single-instance and filesystem scope path exactly as OS file association does.
+  if (!process.env.LIRELIA_TEST_APP) throw new Error('Installed EXE path is missing.');
+  await promisify(execFile)(process.env.LIRELIA_TEST_APP, [resolve('verification-results/lirelia-test.epub')], { timeout: 20000 });
   let reader;
   const readerDeadline = Date.now() + 60000;
   while (!reader && Date.now() < readerDeadline) {
     reader = browser.contexts().flatMap(context => context.pages())
       .find(candidate => /\/reader(?:\/|\?|$)/.test(candidate.url()));
-    if (!reader) await new Promise(resolve => setTimeout(resolve, 500));
+    if (!reader) {
+      const language = page.getByRole('dialog', { name: '选择这本书的阅读语言' });
+      if (await language.isVisible().catch(() => false)) await language.getByRole('button', { name: '法语', exact: true }).click();
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
   if (!reader) throw new Error('Opening the test EPUB did not create the reader.');
   await reader.evaluate(() => {
@@ -95,6 +89,8 @@ try {
 } catch (error) {
   if (page) {
     await page.screenshot({ path: 'verification-results/failure.png', fullPage: true }).catch(() => {});
+    const surfaces = await Promise.all(browser.contexts().flatMap(c => c.pages()).map(async p => ({ url: p.url(), body: await p.locator('body').innerText().catch(() => ''), frames: p.frames().map(f => f.url()) })));
+    await writeFile('verification-results/surfaces.json', JSON.stringify(surfaces, null, 2));
     await writeFile('verification-results/failure.txt', `${error.stack}\n\n${await page.locator('body').innerText().catch(() => '')}\n\n${JSON.stringify(diagnostics)}`);
   }
   throw error;

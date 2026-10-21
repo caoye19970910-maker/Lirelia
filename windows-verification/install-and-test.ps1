@@ -42,6 +42,7 @@ try {
     $app = Start-Process $application -PassThru
     python create-test-book.py
     if ($LASTEXITCODE -ne 0) { throw "Creating the native reader test EPUB failed." }
+    $env:LIRELIA_TEST_APP = $application
     node check-ui.mjs
     if ($LASTEXITCODE -ne 0) { throw 'Installed application UI verification failed.' }
 } finally {
